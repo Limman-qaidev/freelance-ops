@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { render } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 describe('application context', () => {
@@ -29,12 +29,12 @@ describe('application context', () => {
       );
     }
 
-    render(
+    const { getByText } = render(
       <ApplicationContextProvider application={application}>
         <Consumer />
       </ApplicationContextProvider>,
     );
 
-    expect(screen.getByText('Freelance Ops:services:isolated')).toBeTruthy();
+    expect(getByText('Freelance Ops:services:isolated')).toBeTruthy();
   });
 });
