@@ -27,5 +27,6 @@ describe('application shell', () => {
     expect(screen.getByText('Tasks')).toBeTruthy();
     expect(screen.getByText('Planning')).toBeTruthy();
     expect(screen.getByText('More')).toBeTruthy();
+    expect(screen.getByText('Intentional CI failure sentinel')).toBeTruthy();
   });
 });
