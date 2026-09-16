@@ -178,7 +178,7 @@ describe('Start Work', () => {
     expect(view.getByText('Task (optional)')).toBeTruthy();
     expect(view.getByText('Activity (optional)')).toBeTruthy();
 
-    fireEvent.press(view.getByLabelText('Start Work'));
+    await fireEvent.press(view.getByLabelText('Start Work'));
 
     await waitFor(() =>
       expect(application.timeTrackingService.startWork).toHaveBeenCalledWith({
@@ -204,14 +204,17 @@ describe('Start Work', () => {
     await view.findByText('Mailing tool');
     expect(view.queryByText('Paused engagement')).toBeNull();
 
-    fireEvent.press(view.getByLabelText('Select project Spare parts'));
+    await fireEvent.press(view.getByLabelText('Select project Spare parts'));
     expect(await view.findByText('Catalogue parser')).toBeTruthy();
     expect(view.queryByText('Finished task')).toBeNull();
 
-    fireEvent.press(view.getByLabelText('Select task Catalogue parser'));
-    fireEvent.press(view.getByLabelText('Select activity Development'));
-    fireEvent.changeText(view.getByPlaceholderText('What are you working on?'), 'Build catalogue parser');
-    fireEvent.press(view.getByLabelText('Start Work'));
+    await fireEvent.press(view.getByLabelText('Select task Catalogue parser'));
+    await fireEvent.press(view.getByLabelText('Select activity Development'));
+    await fireEvent.changeText(
+      view.getByPlaceholderText('What are you working on?'),
+      'Build catalogue parser',
+    );
+    await fireEvent.press(view.getByLabelText('Start Work'));
 
     await waitFor(() =>
       expect(application.timeTrackingService.startWork).toHaveBeenCalledWith({
@@ -233,18 +236,18 @@ describe('Start Work', () => {
     );
 
     await view.findByText('Mailing tool');
-    fireEvent.press(view.getByLabelText('Start Work'));
+    await fireEvent.press(view.getByLabelText('Start Work'));
 
     expect(await view.findByText('Timer already active')).toBeTruthy();
     expect(application.timeTrackingService.startWork).not.toHaveBeenCalled();
 
-    fireEvent.press(view.getByText('Cancel'));
+    await fireEvent.press(view.getByText('Cancel'));
     await waitFor(() => expect(view.queryByText('Timer already active')).toBeNull());
     expect(application.timeTrackingService.stopWork).not.toHaveBeenCalled();
 
-    fireEvent.press(view.getByLabelText('Start Work'));
+    await fireEvent.press(view.getByLabelText('Start Work'));
     await view.findByText('Timer already active');
-    fireEvent.press(view.getByText('Stop current & start selected'));
+    await fireEvent.press(view.getByText('Stop current & start selected'));
 
     await waitFor(() => expect(application.timeTrackingService.stopWork).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(application.timeTrackingService.startWork).toHaveBeenCalledTimes(1));
