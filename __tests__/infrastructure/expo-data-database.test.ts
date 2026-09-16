@@ -1,3 +1,5 @@
+import type { DataDatabase } from '../../src/infrastructure/database/data-database';
+
 describe('createExpoDataDatabase', () => {
   it('forwards parameterized reads and writes without exposing the raw SQLite handle', async () => {
     const { createExpoDataDatabase } = jest.requireActual(
@@ -56,7 +58,7 @@ describe('createExpoDataDatabase', () => {
     };
     const database = createExpoDataDatabase(rawDatabase);
 
-    const result = await database.withExclusiveTransactionAsync(async (tx) => {
+    const result = await database.withExclusiveTransactionAsync(async (tx: DataDatabase) => {
       await tx.runAsync('UPDATE timer SET state = ? WHERE id = ?', 'PAUSED', 'timer-1');
       return 'committed';
     });
