@@ -31,7 +31,7 @@ function createMigrationDatabase(database: DatabaseSync): TransactionDatabase {
 }
 
 function createDataDatabase(database: DatabaseSync) {
-  return {
+  const createExecutor = () => ({
     runAsync: async (source: string, ...params: (string | number | null)[]) => {
       database.prepare(source).run(...params);
     },
@@ -43,11 +43,28 @@ function createDataDatabase(database: DatabaseSync) {
       source: string,
       ...params: (string | number | null)[]
     ) => database.prepare(source).all(...params) as T[],
+  });
+
+  return {
+    ...createExecutor(),
+    withExclusiveTransactionAsync: async <T,>(
+      task: (transaction: ReturnType<typeof createExecutor>) => Promise<T>,
+    ): Promise<T> => {
+      database.exec('BEGIN EXCLUSIVE;');
+      try {
+        const result = await task(createExecutor());
+        database.exec('COMMIT;');
+        return result;
+      } catch (error) {
+        database.exec('ROLLBACK;');
+        throw error;
+      }
+    },
   };
 }
 
 describe('createCoreApplication', () => {
-  it('bootstraps one workspace and seven configurable default activities idempotently', async () => {
+  it('bootstraps one workspace, default activities and all core application services idempotently', async () => {
     const { createCoreApplication } = jest.requireActual(
       '../../src/infrastructure/application/create-core-application',
     ) as {
@@ -87,6 +104,7 @@ describe('createCoreApplication', () => {
       expect(second.clientService).toBeDefined();
       expect(second.projectService).toBeDefined();
       expect(second.taskService).toBeDefined();
+      expect(second.timeTrackingService).toBeDefined();
     } finally {
       database.close();
     }
