@@ -42,8 +42,20 @@ export function ProjectsManagementScreen() {
   }, [clientService, projectService]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    void Promise.all([
+      clientService.listActive(),
+      projectService.listActiveProjects(),
+    ]).then(([nextClients, nextProjects]) => {
+      if (!active) return;
+      setClients(nextClients);
+      setProjects(nextProjects);
+      setProjectClientId((current) => current ?? nextClients[0]?.id ?? null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [clientService, projectService]);
 
   async function submitClient() {
     const name = clientName.trim();
