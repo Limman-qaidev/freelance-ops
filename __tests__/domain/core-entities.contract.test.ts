@@ -1,7 +1,10 @@
 describe('core entity domain contracts', () => {
-  it('exposes the approved project statuses, default activities and UUID generator', () => {
+  it('exposes the approved statuses, default activities and UUID generator', () => {
     const projectModule = jest.requireActual('../../src/domain/projects/project') as {
       PROJECT_STATUSES: readonly string[];
+    };
+    const taskModule = jest.requireActual('../../src/domain/tasks/task') as {
+      TASK_STATUSES: readonly string[];
     };
     const activityModule = jest.requireActual('../../src/domain/activities/activity') as {
       DEFAULT_ACTIVITY_NAMES: readonly string[];
@@ -14,6 +17,12 @@ describe('core entity domain contracts', () => {
       'PLANNED',
       'ACTIVE',
       'ON_HOLD',
+      'COMPLETED',
+      'CANCELLED',
+    ]);
+    expect(taskModule.TASK_STATUSES).toEqual([
+      'PENDING',
+      'IN_PROGRESS',
       'COMPLETED',
       'CANCELLED',
     ]);
