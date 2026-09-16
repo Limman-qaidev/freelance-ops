@@ -6,8 +6,12 @@ import {
   INITIAL_SCHEMA_SQL,
   INITIAL_SCHEMA_VERSION,
 } from './migrations/001-initial-schema';
+import {
+  TIMER_LIFECYCLE_SCHEMA_VERSION,
+  TIMER_LIFECYCLE_SQL,
+} from './migrations/002-timer-lifecycle';
 
-export const DATABASE_VERSION = INITIAL_SCHEMA_VERSION;
+export const DATABASE_VERSION = TIMER_LIFECYCLE_SCHEMA_VERSION;
 
 interface UserVersionRow {
   user_version: number;
@@ -42,6 +46,11 @@ export async function migrateDatabase(
     if (version < INITIAL_SCHEMA_VERSION) {
       await transaction.execAsync(INITIAL_SCHEMA_SQL);
       version = INITIAL_SCHEMA_VERSION;
+    }
+
+    if (version < TIMER_LIFECYCLE_SCHEMA_VERSION) {
+      await transaction.execAsync(TIMER_LIFECYCLE_SQL);
+      version = TIMER_LIFECYCLE_SCHEMA_VERSION;
     }
 
     await transaction.execAsync(`PRAGMA user_version = ${version};`);
