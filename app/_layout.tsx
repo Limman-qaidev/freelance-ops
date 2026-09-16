@@ -10,6 +10,7 @@ export default function RootLayout() {
       <ApplicationProvider>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="start-work" />
         </Stack>
         <StatusBar style="auto" />
       </ApplicationProvider>

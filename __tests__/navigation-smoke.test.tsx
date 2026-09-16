@@ -6,13 +6,45 @@ import MoreScreen from '../app/(tabs)/more';
 import PlanningScreen from '../app/(tabs)/planning';
 import ProjectsScreen from '../app/(tabs)/projects';
 import TasksScreen from '../app/(tabs)/tasks';
+import { ApplicationContextProvider } from '../src/providers/application-context';
+
+const shellApplication = {
+  workspace: {
+    id: 'workspace-shell',
+    name: 'Freelance Ops',
+    defaultCurrency: 'EUR',
+    createdAt: '2026-09-16T00:00:00.000Z',
+    updatedAt: '2026-09-16T00:00:00.000Z',
+  },
+  clientService: {
+    getById: jest.fn(async () => null),
+  },
+  projectService: {
+    listActiveProjects: jest.fn(async () => []),
+    getById: jest.fn(async () => null),
+  },
+  taskService: {},
+  activityService: {},
+  timeTrackingService: {
+    getActiveSession: jest.fn(async () => null),
+    getElapsedDuration: jest.fn(async () => 0),
+  },
+};
+
+function TodayWithApplication() {
+  return (
+    <ApplicationContextProvider application={shellApplication as never}>
+      <TodayScreen />
+    </ApplicationContextProvider>
+  );
+}
 
 describe('application shell', () => {
   it('renders Today and all bottom navigation destinations', async () => {
     await renderRouter(
       {
         '(tabs)/_layout': TabLayout,
-        '(tabs)/index': TodayScreen,
+        '(tabs)/index': TodayWithApplication,
         '(tabs)/projects': ProjectsScreen,
         '(tabs)/tasks': TasksScreen,
         '(tabs)/planning': PlanningScreen,
