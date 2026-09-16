@@ -10,7 +10,9 @@ const mockApplication = {
   taskService: {},
   activityService: {},
 };
-const mockCreateCoreApplication = jest.fn(async () => mockApplication);
+const mockCreateCoreApplication = jest.fn(
+  async (_database: unknown, _options: unknown) => mockApplication,
+);
 
 jest.mock('expo-sqlite', () => ({
   useSQLiteContext: () => mockDatabase,
@@ -21,7 +23,8 @@ jest.mock('../../src/infrastructure/database/expo-data-database', () => ({
 }));
 
 jest.mock('../../src/infrastructure/application/create-core-application', () => ({
-  createCoreApplication: (...args: unknown[]) => mockCreateCoreApplication(...args),
+  createCoreApplication: (database: unknown, options: unknown) =>
+    mockCreateCoreApplication(database, options),
 }));
 
 describe('ApplicationProvider', () => {
