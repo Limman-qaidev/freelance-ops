@@ -30,7 +30,10 @@ export async function createCoreApplication(
 ): Promise<CoreApplication> {
   const workspaceRepository = new SqliteWorkspaceRepository(database);
   const workspaceService = new WorkspaceService(workspaceRepository);
-  const workspace = await workspaceService.ensureDefault(options);
+  const workspace = await workspaceService.ensureDefault({
+    name: options.workspaceName,
+    defaultCurrency: options.defaultCurrency,
+  });
 
   const clientService = new ClientService(
     new SqliteClientRepository(database),
