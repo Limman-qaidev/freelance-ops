@@ -72,7 +72,7 @@ function tableExists(database: DatabaseSync, tableName: string): boolean {
 }
 
 describe('database migrations', () => {
-  it('creates schema version 1 on a fresh database', async () => {
+  it('creates the current schema version on a fresh database', async () => {
     const database = new DatabaseSync(':memory:');
 
     try {
@@ -84,7 +84,7 @@ describe('database migrations', () => {
         .prepare(
           "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
         )
-        .all() as Array<{ name: string }>;
+        .all() as { name: string }[];
 
       expect(tables.map(({ name }) => name)).toEqual([
         'activities',
@@ -151,13 +151,16 @@ describe('database migrations', () => {
     try {
       await migrateDatabase(createTestDatabase(database));
 
-      const expenseColumns = database.prepare('PRAGMA table_info(expenses)').all() as Array<{
+      const expenseColumns = database.prepare('PRAGMA table_info(expenses)').all() as {
         name: string;
         type: string;
-      }>;
+      }[];
       const intervalColumns = database
         .prepare('PRAGMA table_info(work_intervals)')
-        .all() as Array<{ name: string; type: string }>;
+        .all() as { name: string; type: string }[];
+      const timeEntryColumns = database
+        .prepare('PRAGMA table_info(time_entries)')
+        .all() as { name: string; type: string }[];
 
       expect(
         expenseColumns.find(({ name }) => name === 'original_amount_minor')?.type,
@@ -174,6 +177,11 @@ describe('database migrations', () => {
           expect.objectContaining({ name: 'started_at_utc', type: 'TEXT' }),
           expect.objectContaining({ name: 'ended_at_utc', type: 'TEXT' }),
           expect.objectContaining({ name: 'timezone_id', type: 'TEXT' }),
+        ]),
+      );
+      expect(timeEntryColumns).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'stopped_at_utc', type: 'TEXT' }),
         ]),
       );
     } finally {

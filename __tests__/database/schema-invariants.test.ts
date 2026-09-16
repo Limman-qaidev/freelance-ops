@@ -122,7 +122,7 @@ describe('database schema invariants', () => {
         'entry-1',
         'project-1',
         1,
-        'TIMER',
+        'MANUAL',
         '2026-09-16',
         '2026-09-16',
       );
@@ -130,7 +130,7 @@ describe('database schema invariants', () => {
         'entry-2',
         'project-2',
         1,
-        'TIMER',
+        'MANUAL',
         '2026-09-16',
         '2026-09-16',
       );
@@ -166,6 +166,59 @@ describe('database schema invariants', () => {
           'entry-2',
           '2026-09-16T09:00:00Z',
           'Europe/Madrid',
+          '2026-09-16T09:00:00Z',
+        ),
+      ).not.toThrow();
+    } finally {
+      database.close();
+    }
+  });
+
+  it('allows at most one unstopped TIMER session even while paused', async () => {
+    const database = new DatabaseSync(':memory:');
+
+    try {
+      await migrateDatabase(createTestDatabase(database));
+      seedProjects(database);
+
+      const insertTimer = database.prepare(
+        'INSERT INTO time_entries (id, project_id, billable, source, stopped_at_utc, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      );
+
+      insertTimer.run(
+        'timer-1',
+        'project-1',
+        1,
+        'TIMER',
+        null,
+        '2026-09-16T08:00:00Z',
+        '2026-09-16T08:30:00Z',
+      );
+
+      expect(() =>
+        insertTimer.run(
+          'timer-2',
+          'project-2',
+          1,
+          'TIMER',
+          null,
+          '2026-09-16T09:00:00Z',
+          '2026-09-16T09:00:00Z',
+        ),
+      ).toThrow();
+
+      database
+        .prepare('UPDATE time_entries SET stopped_at_utc = ?, updated_at = ? WHERE id = ?')
+        .run('2026-09-16T08:30:00Z', '2026-09-16T08:30:00Z', 'timer-1');
+
+      expect(() =>
+        insertTimer.run(
+          'timer-2',
+          'project-2',
+          1,
+          'TIMER',
+          null,
+          '2026-09-16T09:00:00Z',
           '2026-09-16T09:00:00Z',
         ),
       ).not.toThrow();

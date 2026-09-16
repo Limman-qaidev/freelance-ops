@@ -3,12 +3,14 @@ import { WorkspaceService } from '@/application/bootstrap/workspace-service';
 import { ClientService } from '@/application/clients/client-service';
 import { ProjectService } from '@/application/projects/project-service';
 import { TaskService } from '@/application/tasks/task-service';
+import { TimeTrackingService } from '@/application/time-tracking/time-tracking-service';
 import type { Workspace } from '@/domain/shared/workspace';
-import type { DataDatabase } from '@/infrastructure/database/data-database';
+import type { TransactionalDataDatabase } from '@/infrastructure/database/data-database';
 import { SqliteActivityRepository } from '@/infrastructure/repositories/sqlite-activity-repository';
 import { SqliteClientRepository } from '@/infrastructure/repositories/sqlite-client-repository';
 import { SqliteProjectRepository } from '@/infrastructure/repositories/sqlite-project-repository';
 import { SqliteTaskRepository } from '@/infrastructure/repositories/sqlite-task-repository';
+import { SqliteTimeTrackingRepository } from '@/infrastructure/repositories/sqlite-time-tracking-repository';
 import { SqliteWorkspaceRepository } from '@/infrastructure/repositories/sqlite-workspace-repository';
 
 export type CoreApplication = {
@@ -17,6 +19,7 @@ export type CoreApplication = {
   projectService: ProjectService;
   taskService: TaskService;
   activityService: ActivityService;
+  timeTrackingService: TimeTrackingService;
 };
 
 export type CoreApplicationOptions = {
@@ -25,7 +28,7 @@ export type CoreApplicationOptions = {
 };
 
 export async function createCoreApplication(
-  database: DataDatabase,
+  database: TransactionalDataDatabase,
   options: CoreApplicationOptions,
 ): Promise<CoreApplication> {
   const workspaceRepository = new SqliteWorkspaceRepository(database);
@@ -35,18 +38,23 @@ export async function createCoreApplication(
     defaultCurrency: options.defaultCurrency,
   });
 
+  const projectRepository = new SqliteProjectRepository(database);
+  const taskRepository = new SqliteTaskRepository(database);
+
   const clientService = new ClientService(
     new SqliteClientRepository(database),
     workspace.id,
   );
-  const projectService = new ProjectService(
-    new SqliteProjectRepository(database),
-    workspace.id,
-  );
-  const taskService = new TaskService(new SqliteTaskRepository(database));
+  const projectService = new ProjectService(projectRepository, workspace.id);
+  const taskService = new TaskService(taskRepository);
   const activityService = new ActivityService(
     new SqliteActivityRepository(database),
     workspace.id,
+  );
+  const timeTrackingService = new TimeTrackingService(
+    new SqliteTimeTrackingRepository(database),
+    projectRepository,
+    taskRepository,
   );
 
   await activityService.ensureDefaults();
@@ -57,5 +65,6 @@ export async function createCoreApplication(
     projectService,
     taskService,
     activityService,
+    timeTrackingService,
   };
 }
