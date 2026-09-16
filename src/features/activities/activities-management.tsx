@@ -16,8 +16,14 @@ export function ActivitiesManagement() {
   }, [activityService]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    void activityService.listActive().then((nextActivities) => {
+      if (active) setActivities(nextActivities);
+    });
+    return () => {
+      active = false;
+    };
+  }, [activityService]);
 
   async function submit() {
     const trimmed = name.trim();
