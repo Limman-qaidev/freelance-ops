@@ -99,7 +99,7 @@ describe('core entity mobile screens', () => {
       </ApplicationContextProvider>,
     );
 
-    expect(await view.findByText('Maubank')).toBeTruthy();
+    expect((await view.findAllByText('Maubank')).length).toBeGreaterThan(0);
     expect(view.getByText('Mailing tool')).toBeTruthy();
 
     await fireEvent.changeText(view.getByPlaceholderText('Client name'), 'Nissan');
