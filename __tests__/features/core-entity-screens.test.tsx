@@ -102,19 +102,19 @@ describe('core entity mobile screens', () => {
     expect(await view.findByText('Maubank')).toBeTruthy();
     expect(view.getByText('Mailing tool')).toBeTruthy();
 
-    fireEvent.changeText(view.getByPlaceholderText('Client name'), 'Nissan');
-    fireEvent.press(view.getByText('Add client'));
+    await fireEvent.changeText(view.getByPlaceholderText('Client name'), 'Nissan');
+    await fireEvent.press(view.getByText('Add client'));
     expect(application.clientService.create).toHaveBeenCalledWith({
       name: 'Nissan',
       legalName: null,
       notes: null,
     });
 
-    fireEvent.press(view.getByLabelText('Archive client Maubank'));
+    await fireEvent.press(view.getByLabelText('Archive client Maubank'));
     expect(application.clientService.archive).toHaveBeenCalledWith('client-1');
 
-    fireEvent.changeText(view.getByPlaceholderText('Project name'), 'Spare parts');
-    fireEvent.press(view.getByText('Add project'));
+    await fireEvent.changeText(view.getByPlaceholderText('Project name'), 'Spare parts');
+    await fireEvent.press(view.getByText('Add project'));
     expect(application.projectService.create).toHaveBeenCalledWith(
       expect.objectContaining({
         clientId: 'client-1',
@@ -123,7 +123,7 @@ describe('core entity mobile screens', () => {
       }),
     );
 
-    fireEvent.press(view.getByLabelText('Archive project Mailing tool'));
+    await fireEvent.press(view.getByLabelText('Archive project Mailing tool'));
     expect(application.projectService.archive).toHaveBeenCalledWith('project-1');
   });
 
@@ -139,9 +139,9 @@ describe('core entity mobile screens', () => {
     );
 
     expect(await view.findByText('SMTP integration')).toBeTruthy();
-    fireEvent.changeText(view.getByPlaceholderText('Task name'), 'Catalogue parser');
-    fireEvent.changeText(view.getByPlaceholderText('Estimated minutes'), '90');
-    fireEvent.press(view.getByText('Add task'));
+    await fireEvent.changeText(view.getByPlaceholderText('Task name'), 'Catalogue parser');
+    await fireEvent.changeText(view.getByPlaceholderText('Estimated minutes'), '90');
+    await fireEvent.press(view.getByText('Add task'));
 
     expect(application.taskService.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -151,7 +151,7 @@ describe('core entity mobile screens', () => {
       }),
     );
 
-    fireEvent.press(view.getByLabelText('Archive task SMTP integration'));
+    await fireEvent.press(view.getByLabelText('Archive task SMTP integration'));
     expect(application.taskService.archive).toHaveBeenCalledWith('task-1');
   });
 
@@ -167,11 +167,11 @@ describe('core entity mobile screens', () => {
     );
 
     expect(await view.findByText('Development')).toBeTruthy();
-    fireEvent.changeText(view.getByPlaceholderText('Activity name'), 'Research');
-    fireEvent.press(view.getByText('Add activity'));
+    await fireEvent.changeText(view.getByPlaceholderText('Activity name'), 'Research');
+    await fireEvent.press(view.getByText('Add activity'));
     expect(application.activityService.create).toHaveBeenCalledWith({ name: 'Research' });
 
-    fireEvent.press(view.getByLabelText('Archive activity Development'));
+    await fireEvent.press(view.getByLabelText('Archive activity Development'));
     expect(application.activityService.archive).toHaveBeenCalledWith('activity-1');
   });
 });
