@@ -2,7 +2,7 @@ import { render } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 describe('application context', () => {
-  it('exposes core services to UI without exposing a database handle', () => {
+  it('exposes core services to UI without exposing a database handle', async () => {
     const {
       ApplicationContextProvider,
       useApplication,
@@ -29,7 +29,7 @@ describe('application context', () => {
       );
     }
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <ApplicationContextProvider application={application}>
         <Consumer />
       </ApplicationContextProvider>,
