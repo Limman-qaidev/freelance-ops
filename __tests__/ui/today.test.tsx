@@ -140,7 +140,7 @@ describe('Today', () => {
 
   it('lists trackable projects with client context and opens Start Work for the selected project', async () => {
     const application = makeApplication();
-    const view = render(
+    const view = await render(
       <ApplicationContextProvider application={application as never}>
         <TodayScreen />
       </ApplicationContextProvider>,
@@ -162,7 +162,7 @@ describe('Today', () => {
 
   it('recovers the persisted active session and exposes pause, resume and stop controls', async () => {
     const application = makeApplication(runningSession);
-    const view = render(
+    const view = await render(
       <ApplicationContextProvider application={application as never}>
         <TodayScreen />
       </ApplicationContextProvider>,
