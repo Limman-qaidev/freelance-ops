@@ -13,4 +13,31 @@ module.exports = defineConfig([
       'ios/**',
     ],
   },
+  {
+    files: ['app/(tabs)/**/*.{ts,tsx}', 'src/ui/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'expo-sqlite',
+              message:
+                'UI code must access persistence through application/repository boundaries, never Expo SQLite directly.',
+            },
+          ],
+          patterns: [
+            {
+              group: [
+                '@/infrastructure/database/*',
+                '**/infrastructure/database/*',
+              ],
+              message:
+                'UI code must not import database infrastructure directly.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);
