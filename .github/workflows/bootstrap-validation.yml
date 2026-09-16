@@ -36,8 +36,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Verify Expo Android export
+        run: npx expo export --platform android --output-dir dist-android-ci
+
       - name: Verify Expo web export
-        run: npx expo export --platform web --output-dir dist-ci
+        run: npx expo export --platform web --output-dir dist-web-ci
 
       - name: Commit generated lockfile on implementation branch
         if: github.event_name == 'push' && github.ref == 'refs/heads/codex/fnd-001-scaffold'
