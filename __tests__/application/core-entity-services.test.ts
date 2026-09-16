@@ -31,7 +31,7 @@ describe('core entity application services', () => {
   const workspaceId = '11111111-1111-4111-8111-111111111111';
   const now = () => '2026-09-16T19:00:00.000Z';
 
-  it('creates and archives clients without losing historical lookup', async () => {
+  it('creates, edits and archives clients without losing historical lookup', async () => {
     const { ClientService } = jest.requireActual(
       '../../src/application/clients/client-service',
     ) as {
@@ -50,11 +50,17 @@ describe('core entity application services', () => {
     );
 
     const created = await service.create({ name: 'Synthetic Client' });
+    const updated = await service.update({
+      id: created.id,
+      name: 'Synthetic Client Updated',
+      legalName: 'Synthetic Client Ltd',
+    });
 
-    expect(created).toMatchObject({
+    expect(updated).toMatchObject({
       id: '22222222-2222-4222-8222-222222222222',
       workspaceId,
-      name: 'Synthetic Client',
+      name: 'Synthetic Client Updated',
+      legalName: 'Synthetic Client Ltd',
       archivedAt: null,
       createdAt: now(),
       updatedAt: now(),
@@ -67,10 +73,11 @@ describe('core entity application services', () => {
     expect(await service.getById(created.id)).toMatchObject({
       id: created.id,
       archivedAt: now(),
+      createdAt: now(),
     });
   });
 
-  it('creates projects as PLANNED with currency and optional dates', async () => {
+  it('creates projects as PLANNED and supports explicit status edits', async () => {
     const { ProjectService } = jest.requireActual(
       '../../src/application/projects/project-service',
     ) as {
@@ -80,7 +87,8 @@ describe('core entity application services', () => {
     const service = new ProjectService(
       {
         ...repository,
-        listActive: async () => [...repository.items.values()],
+        listActive: async () =>
+          [...repository.items.values()].filter((item) => item.archivedAt === null),
       },
       workspaceId,
       () => '33333333-3333-4333-8333-333333333333',
@@ -94,17 +102,23 @@ describe('core entity application services', () => {
       plannedStartDate: '2026-09-20',
       plannedEndDate: '2026-10-31',
     });
+    const updated = await service.update({
+      ...project,
+      status: 'ACTIVE',
+      description: 'Synthetic project only',
+    });
 
-    expect(project).toMatchObject({
-      status: 'PLANNED',
+    expect(updated).toMatchObject({
+      status: 'ACTIVE',
       projectCurrency: 'EUR',
       plannedStartDate: '2026-09-20',
       plannedEndDate: '2026-10-31',
       archivedAt: null,
+      createdAt: now(),
     });
   });
 
-  it('creates tasks as PENDING with optional estimate and dates', async () => {
+  it('creates tasks as PENDING and supports estimate/status edits', async () => {
     const { TaskService } = jest.requireActual(
       '../../src/application/tasks/task-service',
     ) as {
@@ -130,17 +144,23 @@ describe('core entity application services', () => {
       plannedStartDate: '2026-09-21',
       plannedEndDate: '2026-09-24',
     });
+    const updated = await service.update({
+      ...task,
+      status: 'IN_PROGRESS',
+      estimatedMinutes: 300,
+    });
 
-    expect(task).toMatchObject({
-      status: 'PENDING',
-      estimatedMinutes: 240,
+    expect(updated).toMatchObject({
+      status: 'IN_PROGRESS',
+      estimatedMinutes: 300,
       plannedStartDate: '2026-09-21',
       plannedEndDate: '2026-09-24',
       archivedAt: null,
+      createdAt: now(),
     });
   });
 
-  it('seeds default activities idempotently', async () => {
+  it('seeds default activities once and respects later user configuration', async () => {
     const { ActivityService } = jest.requireActual(
       '../../src/application/activities/activity-service',
     ) as {
@@ -157,6 +177,7 @@ describe('core entity application services', () => {
         },
         listActive: async () =>
           [...repository.items.values()].filter((item) => item.archivedAt === null),
+        listAll: async () => [...repository.items.values()],
       },
       workspaceId,
       () => `55555555-5555-4555-8555-${String(sequence++).padStart(12, '0')}`,
@@ -166,9 +187,24 @@ describe('core entity application services', () => {
     await service.ensureDefaults();
     await service.ensureDefaults();
 
-    expect((await service.listActive()).map((activity: any) => activity.name)).toEqual([
+    const initial = await service.listActive();
+    expect(initial.map((activity: any) => activity.name)).toEqual([
       'Development',
       'Analysis',
+      'Meeting',
+      'Documentation',
+      'Support',
+      'Management',
+      'Other',
+    ]);
+
+    await service.update({ id: initial[0].id, name: 'Engineering' });
+    await service.archive(initial[1].id);
+    await service.ensureDefaults();
+
+    expect(repository.items.size).toBe(7);
+    expect((await service.listActive()).map((activity: any) => activity.name)).toEqual([
+      'Engineering',
       'Meeting',
       'Documentation',
       'Support',
