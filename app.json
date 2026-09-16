@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Freelance Ops",
+    "slug": "freelance-ops",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "freelanceops",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
