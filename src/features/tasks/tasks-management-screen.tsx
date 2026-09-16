@@ -28,27 +28,34 @@ export function TasksManagementScreen() {
   const [status, setStatus] = useState<TaskStatus>('PENDING');
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const loadProjects = useCallback(async () => {
-    const nextProjects = await projectService.listActiveProjects();
-    setProjects(nextProjects);
-    setProjectId((current) => current ?? nextProjects[0]?.id ?? null);
-  }, [projectService]);
-
   const loadTasks = useCallback(async () => {
-    if (!projectId) {
-      setTasks([]);
-      return;
-    }
+    if (!projectId) return;
     setTasks(await taskService.listTasksForProject(projectId));
   }, [projectId, taskService]);
 
   useEffect(() => {
-    void loadProjects();
-  }, [loadProjects]);
+    let active = true;
+    void projectService.listActiveProjects().then((nextProjects) => {
+      if (!active) return;
+      setProjects(nextProjects);
+      setProjectId((current) => current ?? nextProjects[0]?.id ?? null);
+      if (nextProjects.length === 0) setTasks([]);
+    });
+    return () => {
+      active = false;
+    };
+  }, [projectService]);
 
   useEffect(() => {
-    void loadTasks();
-  }, [loadTasks]);
+    if (!projectId) return undefined;
+    let active = true;
+    void taskService.listTasksForProject(projectId).then((nextTasks) => {
+      if (active) setTasks(nextTasks);
+    });
+    return () => {
+      active = false;
+    };
+  }, [projectId, taskService]);
 
   async function submit() {
     const trimmedName = name.trim();
