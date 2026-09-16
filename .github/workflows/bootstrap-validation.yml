@@ -1,0 +1,56 @@
+name: Bootstrap validation
+
+on:
+  push:
+    branches:
+      - codex/fnd-001-scaffold
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Generate or refresh npm lockfile
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Install from lockfile
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Verify Expo Android export
+        run: npx expo export --platform android --output-dir dist-android-ci
+
+      - name: Verify Expo web export
+        run: npx expo export --platform web --output-dir dist-web-ci
+
+      - name: Commit generated lockfile on implementation branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/codex/fnd-001-scaffold'
+        run: |
+          if git diff --quiet -- package-lock.json && git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+            echo "package-lock.json is already committed and unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: commit generated npm lockfile"
+          git push

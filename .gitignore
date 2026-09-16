@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Generated native folders
+/android/
+/ios/
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# TypeScript
+*.tsbuildinfo
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local application data - never commit real client data
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+backups/
+exports/
+receipts/
+attachments/
+
+# Local worktrees / IDE / OS
+.worktrees/
+.vscode/
+.idea/
+.DS_Store
+*.pem
