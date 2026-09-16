@@ -1,0 +1,52 @@
+name: SQLite validation
+
+on:
+  push:
+    branches:
+      - codex/fnd-003-sqlite-v2
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Refresh npm lockfile
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Install from lockfile
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm run test:ci
+
+      - name: Verify Expo Android export
+        run: npx expo export --platform android --output-dir dist-android-ci
+
+      - name: Commit dependency metadata
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "Dependency metadata is unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore: sync SQLite dependency metadata"
+          git push
