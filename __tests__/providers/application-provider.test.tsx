@@ -33,6 +33,24 @@ describe('ApplicationProvider', () => {
     mockCreateCoreApplication.mockResolvedValue(mockApplication);
   });
 
+  it('renders a loading state while the core application is still initializing', async () => {
+    mockCreateCoreApplication.mockImplementationOnce(
+      () => new Promise(() => undefined),
+    );
+    const { ApplicationProvider } = jest.requireActual(
+      '../../src/providers/application-provider',
+    ) as { ApplicationProvider: any };
+
+    const view = await render(
+      <ApplicationProvider>
+        <Text>Should not render yet</Text>
+      </ApplicationProvider>,
+    );
+
+    expect(view.getByText('Preparing your workspace…')).toBeTruthy();
+    expect(view.queryByText('Should not render yet')).toBeNull();
+  });
+
   it('initializes the core application and then exposes children', async () => {
     const { ApplicationProvider } = jest.requireActual(
       '../../src/providers/application-provider',
@@ -52,7 +70,6 @@ describe('ApplicationProvider', () => {
       </ApplicationProvider>,
     );
 
-    expect(view.getByText('Preparing your workspace…')).toBeTruthy();
     expect(await view.findByText('Freelance Ops')).toBeTruthy();
     expect(mockCreateCoreApplication).toHaveBeenCalledWith(mockDataDatabase, {
       workspaceName: 'Freelance Ops',
