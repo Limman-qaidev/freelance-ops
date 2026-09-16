@@ -152,7 +152,7 @@ describe('Today', () => {
     expect(view.queryByText('Finished engagement')).toBeNull();
     expect(view.getAllByText('Maubank').length).toBeGreaterThan(0);
 
-    fireEvent.press(view.getByLabelText('Start work on Mailing tool'));
+    await fireEvent.press(view.getByLabelText('Start work on Mailing tool'));
 
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/start-work',
@@ -173,15 +173,15 @@ describe('Today', () => {
     expect(view.getByText('Pause')).toBeTruthy();
     expect(view.getByText('Stop')).toBeTruthy();
 
-    fireEvent.press(view.getByText('Pause'));
+    await fireEvent.press(view.getByText('Pause'));
     await waitFor(() => expect(application.timeTrackingService.pauseWork).toHaveBeenCalledTimes(1));
     expect(await view.findByText('Resume')).toBeTruthy();
 
-    fireEvent.press(view.getByText('Resume'));
+    await fireEvent.press(view.getByText('Resume'));
     await waitFor(() => expect(application.timeTrackingService.resumeWork).toHaveBeenCalledTimes(1));
     expect(await view.findByText('Pause')).toBeTruthy();
 
-    fireEvent.press(view.getByText('Stop'));
+    await fireEvent.press(view.getByText('Stop'));
     await waitFor(() => expect(application.timeTrackingService.stopWork).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(view.queryByText('Active session')).toBeNull());
   });
