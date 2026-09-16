@@ -201,7 +201,7 @@ export default function StartWorkScreen() {
           accessibilityLabel="Start Work"
           onPress={() => void requestStart()}
         />
-        <ActionButton label="Cancel" variant="secondary" onPress={() => router.back()} />
+        <ActionButton label="Back" variant="secondary" onPress={() => router.back()} />
 
         {conflictVisible ? (
           <View style={styles.conflictCard}>
