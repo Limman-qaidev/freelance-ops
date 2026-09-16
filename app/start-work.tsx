@@ -126,6 +126,7 @@ export default function StartWorkScreen() {
   }
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null;
+  const alternativeProjects = projects.filter((project) => project.id !== selectedProjectId);
 
   return (
     <ScreenShell
@@ -144,17 +145,22 @@ export default function StartWorkScreen() {
         ) : (
           <Text style={styles.muted}>No trackable project is available.</Text>
         )}
-        <View style={styles.chips}>
-          {projects.map((project) => (
-            <SelectionChip
-              key={project.id}
-              label={project.name}
-              selected={project.id === selectedProjectId}
-              accessibilityLabel={`Select project ${project.name}`}
-              onPress={() => void selectProject(project.id)}
-            />
-          ))}
-        </View>
+        {alternativeProjects.length > 0 ? (
+          <>
+            <Text style={styles.muted}>Change project</Text>
+            <View style={styles.chips}>
+              {alternativeProjects.map((project) => (
+                <SelectionChip
+                  key={project.id}
+                  label={project.name}
+                  selected={false}
+                  accessibilityLabel={`Select project ${project.name}`}
+                  onPress={() => void selectProject(project.id)}
+                />
+              ))}
+            </View>
+          </>
+        ) : null}
 
         <Text style={styles.label}>Task (optional)</Text>
         <View style={styles.chips}>
