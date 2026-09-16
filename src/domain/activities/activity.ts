@@ -31,4 +31,5 @@ export interface ActivityRepository {
   archive(id: string, archivedAt: string): Promise<void>;
   getById(id: string): Promise<Activity | null>;
   listActive(workspaceId: string): Promise<Activity[]>;
+  listAll(workspaceId: string): Promise<Activity[]>;
 }
