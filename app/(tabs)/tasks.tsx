@@ -1,10 +1,3 @@
-import { ScreenShell } from '@/ui/components/screen-shell';
+import { TasksManagementScreen } from '@/features/tasks/tasks-management-screen';
 
-export default function TasksScreen() {
-  return (
-    <ScreenShell
-      title="Tasks"
-      subtitle="Tasks will remain optional for time tracking while supporting estimates and richer project control later."
-    />
-  );
-}
+export default TasksManagementScreen;
