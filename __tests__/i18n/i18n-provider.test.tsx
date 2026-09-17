@@ -49,7 +49,7 @@ describe('I18nProvider', () => {
       typeof Localization.getLocales
     >);
 
-    const screen = renderProbe();
+    const screen = await renderProbe();
 
     await waitFor(() => expect(screen.getByTestId('language').props.children).toBe('es'));
     expect(screen.getByTestId('today-label').props.children).toBe('Hoy');
@@ -60,7 +60,7 @@ describe('I18nProvider', () => {
       typeof Localization.getLocales
     >);
 
-    const screen = renderProbe();
+    const screen = await renderProbe();
 
     await waitFor(() => expect(screen.getByTestId('language').props.children).toBe('en'));
     expect(screen.getByTestId('today-label').props.children).toBe('Today');
@@ -71,7 +71,7 @@ describe('I18nProvider', () => {
       typeof Localization.getLocales
     >);
 
-    const screen = renderProbe();
+    const screen = await renderProbe();
 
     await waitFor(() => expect(screen.getByTestId('language').props.children).toBe('es'));
     expect(screen.getByTestId('today-label').props.children).toBe('Hoy');
@@ -83,7 +83,7 @@ describe('I18nProvider', () => {
     >);
     await AsyncStorage.setItem('freelance-ops:language', 'en');
 
-    const screen = renderProbe();
+    const screen = await renderProbe();
 
     await waitFor(() => expect(screen.getByTestId('language').props.children).toBe('en'));
     expect(screen.getByTestId('today-label').props.children).toBe('Today');
@@ -94,7 +94,7 @@ describe('I18nProvider', () => {
       typeof Localization.getLocales
     >);
 
-    const screen = renderProbe();
+    const screen = await renderProbe();
     await waitFor(() => expect(screen.getByTestId('language').props.children).toBe('es'));
 
     fireEvent.press(screen.getByTestId('set-en'));
