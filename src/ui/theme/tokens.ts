@@ -1,30 +1,16 @@
-export const colors = {
-  background: '#F5F7FB',
-  surface: '#FFFFFF',
-  textPrimary: '#111827',
-  textMuted: '#6B7280',
-  border: '#E5E7EB',
-  accent: '#2563EB',
-  success: '#16A34A',
-} as const;
+import { lightTheme } from '@/ui/theme/theme';
 
-export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-} as const;
-
-export const radii = {
-  sm: 8,
-  md: 12,
-  lg: 18,
-} as const;
+// Transitional aliases for legacy screens. Reconstructed screens consume useTheme().theme.
+export const colors = lightTheme.colors;
+export const spacing = lightTheme.spacing;
+export const radii = lightTheme.radii;
 
 export const typography = {
-  title: 28,
-  sectionTitle: 18,
-  body: 16,
-  caption: 13,
+  display: lightTheme.typography.display.fontSize,
+  title: lightTheme.typography.title.fontSize,
+  sectionTitle: lightTheme.typography.section.fontSize,
+  body: lightTheme.typography.body.fontSize,
+  bodyStrong: lightTheme.typography.bodyStrong.fontSize,
+  caption: lightTheme.typography.caption.fontSize,
+  micro: lightTheme.typography.micro.fontSize,
 } as const;
