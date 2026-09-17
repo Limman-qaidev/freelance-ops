@@ -1,8 +1,7 @@
-import type { ColorSchemeName } from 'react-native';
-
 import type { ThemePreference } from '@/preferences/ui-preferences';
 
 export type ResolvedThemeMode = 'light' | 'dark';
+export type SystemColorScheme = 'light' | 'dark' | null | undefined;
 
 type TypographyToken = {
   fontSize: number;
@@ -147,7 +146,7 @@ export const darkTheme: AppTheme = {
 
 export function resolveThemeMode(
   preference: ThemePreference,
-  systemColorScheme: ColorSchemeName,
+  systemColorScheme: SystemColorScheme,
 ): ResolvedThemeMode {
   if (preference === 'light' || preference === 'dark') {
     return preference;
