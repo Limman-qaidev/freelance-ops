@@ -112,7 +112,7 @@ export default function ExpenseEditorScreen() {
       originalCurrency,
       exchangeRateDecimal: exchangeRateDecimal.trim() || null,
       reimbursable,
-      ...(billable ? { billable: true } : {}),
+      billable,
     };
     try {
       if (params.id) {
