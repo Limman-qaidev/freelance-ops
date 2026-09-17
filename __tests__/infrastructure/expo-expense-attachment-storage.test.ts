@@ -6,16 +6,25 @@ const mockDirectoryCreate = jest.fn();
 const mockPickFileAsync = jest.fn();
 
 jest.mock('expo-file-system', () => {
+  function joinUriParts(parts: ({ uri?: string } | string)[]): string {
+    if (parts.length === 1) {
+      const only = parts[0];
+      return typeof only === 'string' ? only : (only.uri ?? '');
+    }
+    const [first, ...rest] = parts;
+    const base = typeof first === 'string' ? first : (first.uri ?? '');
+    const suffix = rest
+      .map((part) => (typeof part === 'string' ? part : (part.uri ?? '')))
+      .join('/');
+    return `${base.replace(/\/$/, '')}/${suffix.replace(/^\//, '')}`;
+  }
+
   class MockDirectory {
     uri: string;
     exists = false;
 
     constructor(...parts: ({ uri?: string } | string)[]) {
-      this.uri = parts
-        .map((part) => (typeof part === 'string' ? part : (part.uri ?? '')))
-        .join('/')
-        .replace(/\/+/, '/');
-      if (this.uri.startsWith('file:/')) this.uri = this.uri.replace('file:/', 'file:///');
+      this.uri = joinUriParts(parts);
     }
 
     create() {
@@ -37,11 +46,7 @@ jest.mock('expo-file-system', () => {
     }
 
     constructor(...parts: ({ uri?: string } | string)[]) {
-      const raw = parts
-        .map((part) => (typeof part === 'string' ? part : (part.uri ?? '')))
-        .join('/')
-        .replace(/\/+/, '/');
-      this.uri = raw.startsWith('file:/') ? raw.replace('file:/', 'file:///') : raw;
+      this.uri = joinUriParts(parts);
       this.name = this.uri.split('/').pop() || 'receipt.pdf';
       this.type = 'application/pdf';
       this.size = 321;
