@@ -16,6 +16,10 @@ jest.mock('expo-localization', () => ({
 
 const getLocales = Localization.getLocales as jest.MockedFunction<typeof Localization.getLocales>;
 
+function locales(languageCode: string, languageTag: string): ReturnType<typeof Localization.getLocales> {
+  return [{ languageCode, languageTag }] as unknown as ReturnType<typeof Localization.getLocales>;
+}
+
 function Probe() {
   const { language, setLanguage, t } = useI18n();
 
@@ -45,9 +49,7 @@ describe('I18nProvider', () => {
   });
 
   it('uses Spanish for a Spanish device locale', async () => {
-    getLocales.mockReturnValue([{ languageCode: 'es', languageTag: 'es-ES' }] as ReturnType<
-      typeof Localization.getLocales
-    >);
+    getLocales.mockReturnValue(locales('es', 'es-ES'));
 
     const screen = await renderProbe();
 
@@ -56,9 +58,7 @@ describe('I18nProvider', () => {
   });
 
   it('uses English for an English device locale', async () => {
-    getLocales.mockReturnValue([{ languageCode: 'en', languageTag: 'en-GB' }] as ReturnType<
-      typeof Localization.getLocales
-    >);
+    getLocales.mockReturnValue(locales('en', 'en-GB'));
 
     const screen = await renderProbe();
 
@@ -67,9 +67,7 @@ describe('I18nProvider', () => {
   });
 
   it('falls back to Spanish for an unsupported device locale', async () => {
-    getLocales.mockReturnValue([{ languageCode: 'fr', languageTag: 'fr-FR' }] as ReturnType<
-      typeof Localization.getLocales
-    >);
+    getLocales.mockReturnValue(locales('fr', 'fr-FR'));
 
     const screen = await renderProbe();
 
@@ -78,9 +76,7 @@ describe('I18nProvider', () => {
   });
 
   it('applies a persisted manual language override', async () => {
-    getLocales.mockReturnValue([{ languageCode: 'es', languageTag: 'es-ES' }] as ReturnType<
-      typeof Localization.getLocales
-    >);
+    getLocales.mockReturnValue(locales('es', 'es-ES'));
     await AsyncStorage.setItem('freelance-ops:language', 'en');
 
     const screen = await renderProbe();
@@ -90,9 +86,7 @@ describe('I18nProvider', () => {
   });
 
   it('persists a manual override and can clear it back to the device language', async () => {
-    getLocales.mockReturnValue([{ languageCode: 'es', languageTag: 'es-ES' }] as ReturnType<
-      typeof Localization.getLocales
-    >);
+    getLocales.mockReturnValue(locales('es', 'es-ES'));
 
     const screen = await renderProbe();
     await waitFor(() => expect(screen.getByTestId('language').props.children).toBe('es'));
