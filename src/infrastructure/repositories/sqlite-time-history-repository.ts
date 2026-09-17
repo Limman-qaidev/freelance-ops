@@ -54,6 +54,13 @@ export class SqliteTimeHistoryRepository implements TimeHistoryRepository {
     });
   }
 
+  async updateHistoricalMetadata(timeEntry: TimeEntry): Promise<void> {
+    await this.database.withExclusiveTransactionAsync(async (transaction) => {
+      await requireMutableHistoricalEntry(transaction, timeEntry.id);
+      await updateTimeEntry(transaction, timeEntry);
+    });
+  }
+
   async replaceHistoricalEntry(timeEntry: TimeEntry, interval: WorkInterval): Promise<void> {
     if (interval.endedAtUtc === null) {
       throw new Error('Historical time entries must contain only closed intervals.');
@@ -61,21 +68,7 @@ export class SqliteTimeHistoryRepository implements TimeHistoryRepository {
 
     await this.database.withExclusiveTransactionAsync(async (transaction) => {
       await requireMutableHistoricalEntry(transaction, timeEntry.id);
-
-      await transaction.runAsync(
-        `UPDATE time_entries
-            SET project_id = ?, task_id = ?, activity_id = ?, description = ?,
-                billable = ?, stopped_at_utc = ?, updated_at = ?
-          WHERE id = ?`,
-        timeEntry.projectId,
-        timeEntry.taskId,
-        timeEntry.activityId,
-        timeEntry.description,
-        timeEntry.billable ? 1 : 0,
-        timeEntry.stoppedAtUtc,
-        timeEntry.updatedAt,
-        timeEntry.id,
-      );
+      await updateTimeEntry(transaction, timeEntry);
       await transaction.runAsync('DELETE FROM work_intervals WHERE time_entry_id = ?', timeEntry.id);
       await insertInterval(transaction, interval);
     });
@@ -187,6 +180,23 @@ async function requireMutableHistoricalEntry(
     throw new Error('An active timer session cannot be edited or deleted from history.');
   }
   return row;
+}
+
+async function updateTimeEntry(database: DataDatabase, timeEntry: TimeEntry): Promise<void> {
+  await database.runAsync(
+    `UPDATE time_entries
+        SET project_id = ?, task_id = ?, activity_id = ?, description = ?,
+            billable = ?, stopped_at_utc = ?, updated_at = ?
+      WHERE id = ?`,
+    timeEntry.projectId,
+    timeEntry.taskId,
+    timeEntry.activityId,
+    timeEntry.description,
+    timeEntry.billable ? 1 : 0,
+    timeEntry.stoppedAtUtc,
+    timeEntry.updatedAt,
+    timeEntry.id,
+  );
 }
 
 async function insertTimeEntry(database: DataDatabase, timeEntry: TimeEntry): Promise<void> {
