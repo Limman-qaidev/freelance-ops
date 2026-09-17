@@ -105,6 +105,7 @@ describe('createCoreApplication', () => {
       expect(second.projectService).toBeDefined();
       expect(second.taskService).toBeDefined();
       expect(second.timeTrackingService).toBeDefined();
+      expect(second.manualTimeService).toBeDefined();
     } finally {
       database.close();
     }

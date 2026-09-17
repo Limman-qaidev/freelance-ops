@@ -11,6 +11,8 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="start-work" />
+          <Stack.Screen name="time-history" />
+          <Stack.Screen name="time-entry/[id]" />
         </Stack>
         <StatusBar style="auto" />
       </ApplicationProvider>
