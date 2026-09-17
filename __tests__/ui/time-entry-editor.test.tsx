@@ -157,6 +157,7 @@ describe('time entry editor', () => {
     );
     expect(await view.findByText(/overlaps existing recorded time/i)).toBeTruthy();
     expect(router.replace).not.toHaveBeenCalled();
+    expect(view.queryByLabelText('Save time entry')).toBeNull();
   });
 
   it('loads archived master-data references, edits a single-interval record and deletes it explicitly', async () => {
