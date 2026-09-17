@@ -25,15 +25,19 @@ export interface CreateManualTimeInput {
   timing: ManualTimeTiming;
 }
 
+export interface HistoricalTimingReplacement {
+  timezoneId: string;
+  startedAtUtc: string;
+  endedAtUtc: string;
+}
+
 export interface UpdateHistoricalTimeInput {
   projectId: string;
   taskId: string | null;
   activityId: string | null;
   description: string | null;
   billable: boolean;
-  timezoneId: string;
-  startedAtUtc: string;
-  endedAtUtc: string;
+  timing?: HistoricalTimingReplacement;
 }
 
 export interface TimeHistoryRecord {
@@ -55,6 +59,7 @@ export interface ManualTimeMutationResult {
 
 export interface TimeHistoryRepository {
   createHistoricalEntry(timeEntry: TimeEntry, interval: WorkInterval): Promise<void>;
+  updateHistoricalMetadata(timeEntry: TimeEntry): Promise<void>;
   replaceHistoricalEntry(timeEntry: TimeEntry, interval: WorkInterval): Promise<void>;
   deleteHistoricalEntry(timeEntryId: string): Promise<void>;
   getHistoricalEntry(timeEntryId: string): Promise<TimeHistoryRecord | null>;
