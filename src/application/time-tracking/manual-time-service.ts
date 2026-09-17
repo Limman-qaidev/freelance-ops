@@ -129,16 +129,20 @@ export class ManualTimeService {
 
   async listRecentGrouped(limit = 50): Promise<TimeHistoryGroup[]> {
     const records = await this.repository.listRecentHistoricalEntries(limit);
-    const groups: TimeHistoryGroup[] = [];
+    const entriesByDate = new Map<string, TimeHistoryRecord[]>();
+
     for (const record of records) {
-      const current = groups.at(-1);
-      if (current?.localWorkDate === record.localWorkDate) {
-        current.entries.push(record);
+      const entries = entriesByDate.get(record.localWorkDate);
+      if (entries) {
+        entries.push(record);
       } else {
-        groups.push({ localWorkDate: record.localWorkDate, entries: [record] });
+        entriesByDate.set(record.localWorkDate, [record]);
       }
     }
-    return groups;
+
+    return Array.from(entriesByDate.entries())
+      .sort(([leftDate], [rightDate]) => rightDate.localeCompare(leftDate))
+      .map(([localWorkDate, entries]) => ({ localWorkDate, entries }));
   }
 
   private async validateRelationships(
