@@ -126,11 +126,18 @@ function normalizeCurrency(value: string): string {
 
 function currencyMinorDigits(currency: string): number {
   try {
-    return new Intl.NumberFormat('en-US', {
+    const minorDigits = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency,
     }).resolvedOptions().maximumFractionDigits;
-  } catch {
+    if (minorDigits === undefined) {
+      throw new Error(`Currency ${currency} does not expose minor-unit precision.`);
+    }
+    return minorDigits;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('minor-unit precision')) {
+      throw error;
+    }
     throw new Error(`Currency ${currency} is not supported.`);
   }
 }
