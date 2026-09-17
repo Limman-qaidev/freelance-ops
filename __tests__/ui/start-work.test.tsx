@@ -212,10 +212,11 @@ describe('Start Work', () => {
 
     await fireEvent.press(view.getByLabelText('Change project'));
     await fireEvent.press(view.getByLabelText('Select project Spare parts'));
-    expect(await view.findByText('Catalogue parser')).toBeTruthy();
-    expect(view.queryByText('Finished task')).toBeNull();
+    expect(await view.findByText('Spare parts')).toBeTruthy();
 
     await fireEvent.press(view.getByLabelText('Select task'));
+    expect(await view.findByText('Catalogue parser')).toBeTruthy();
+    expect(view.queryByText('Finished task')).toBeNull();
     await fireEvent.press(view.getByLabelText('Select task Catalogue parser'));
     await fireEvent.press(view.getByLabelText('Select activity'));
     await fireEvent.press(view.getByLabelText('Select activity Development'));
@@ -264,8 +265,8 @@ describe('Start Work', () => {
   it('renders the focused form in Spanish and dark mode', async () => {
     const view = await renderStartWork(makeApplication(), 'es', 'dark');
 
-    expect(await view.findByText('Iniciar trabajo')).toBeTruthy();
-    expect(view.getByText('Proyecto')).toBeTruthy();
+    expect(await view.findByText('Proyecto')).toBeTruthy();
+    expect(view.getByLabelText('Iniciar trabajo')).toBeTruthy();
     expect(view.getByText('Tarea · opcional')).toBeTruthy();
     expect(view.getByText('Actividad · opcional')).toBeTruthy();
     expect(view.getByText('Descripción · opcional')).toBeTruthy();
