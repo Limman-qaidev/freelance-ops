@@ -10,7 +10,7 @@ jest.mock('expo-file-system', () => {
     uri: string;
     exists = false;
 
-    constructor(...parts: Array<{ uri?: string } | string>) {
+    constructor(...parts: ({ uri?: string } | string)[]) {
       this.uri = parts
         .map((part) => (typeof part === 'string' ? part : (part.uri ?? '')))
         .join('/')
@@ -25,7 +25,6 @@ jest.mock('expo-file-system', () => {
   }
 
   class MockFile {
-    static pickFileAsync = mockPickFileAsync;
     uri: string;
     name: string;
     type: string;
@@ -33,7 +32,11 @@ jest.mock('expo-file-system', () => {
     md5: string | null;
     exists = true;
 
-    constructor(...parts: Array<{ uri?: string } | string>) {
+    static pickFileAsync(...args: unknown[]) {
+      return mockPickFileAsync(...args);
+    }
+
+    constructor(...parts: ({ uri?: string } | string)[]) {
       const raw = parts
         .map((part) => (typeof part === 'string' ? part : (part.uri ?? '')))
         .join('/')
