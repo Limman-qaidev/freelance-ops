@@ -20,6 +20,7 @@ type ExpenseRow = {
   project_amount_minor: number;
   project_currency: string;
   reimbursable: number;
+  billable: number;
   status: Expense['status'];
   created_at: string;
   updated_at: string;
@@ -39,7 +40,7 @@ type AttachmentRow = {
 const EXPENSE_COLUMNS = `
   id, project_id, expense_date, category, description,
   original_amount_minor, original_currency, exchange_rate_decimal,
-  project_amount_minor, project_currency, reimbursable, status,
+  project_amount_minor, project_currency, reimbursable, billable, status,
   created_at, updated_at
 `;
 
@@ -51,10 +52,12 @@ const ATTACHMENT_COLUMNS = `
 export class SqliteExpenseRepository implements ExpenseRepository {
   constructor(private readonly database: TransactionalDataDatabase) {}
 
-  async create(expense: Expense, attachment?: ExpenseAttachment): Promise<void> {
+  async create(expense: Expense, attachments: ExpenseAttachment[] = []): Promise<void> {
     await this.database.withExclusiveTransactionAsync(async (transaction) => {
       await insertExpense(transaction, expense);
-      if (attachment) await insertAttachment(transaction, attachment);
+      for (const attachment of attachments) {
+        await insertAttachment(transaction, attachment);
+      }
     });
   }
 
@@ -63,7 +66,7 @@ export class SqliteExpenseRepository implements ExpenseRepository {
       `UPDATE expenses
           SET project_id = ?, expense_date = ?, category = ?, description = ?,
               original_amount_minor = ?, original_currency = ?, exchange_rate_decimal = ?,
-              project_amount_minor = ?, project_currency = ?, reimbursable = ?, status = ?,
+              project_amount_minor = ?, project_currency = ?, reimbursable = ?, billable = ?, status = ?,
               updated_at = ?
         WHERE id = ?`,
       expense.projectId,
@@ -76,6 +79,7 @@ export class SqliteExpenseRepository implements ExpenseRepository {
       expense.projectAmountMinor,
       expense.projectCurrency,
       expense.reimbursable ? 1 : 0,
+      expense.billable ? 1 : 0,
       expense.status,
       expense.updatedAt,
       expense.id,
@@ -140,9 +144,9 @@ async function insertExpense(database: DataDatabase, expense: Expense): Promise<
     `INSERT INTO expenses (
       id, project_id, expense_date, category, description,
       original_amount_minor, original_currency, exchange_rate_decimal,
-      project_amount_minor, project_currency, reimbursable, status,
+      project_amount_minor, project_currency, reimbursable, billable, status,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     expense.id,
     expense.projectId,
     expense.expenseDate,
@@ -154,6 +158,7 @@ async function insertExpense(database: DataDatabase, expense: Expense): Promise<
     expense.projectAmountMinor,
     expense.projectCurrency,
     expense.reimbursable ? 1 : 0,
+    expense.billable ? 1 : 0,
     expense.status,
     expense.createdAt,
     expense.updatedAt,
@@ -193,6 +198,7 @@ function mapExpense(row: ExpenseRow): Expense {
     projectAmountMinor: row.project_amount_minor,
     projectCurrency: row.project_currency,
     reimbursable: row.reimbursable === 1,
+    billable: row.billable === 1,
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
