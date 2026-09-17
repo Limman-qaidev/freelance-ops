@@ -126,7 +126,7 @@ function PickerSheet({
         <Pressable
           accessible={false}
           onPress={onClose}
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.scrim }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.scrim }]}
         />
         <SafeAreaView
           edges={['bottom', 'left', 'right']}
@@ -517,7 +517,7 @@ export default function StartWorkScreen() {
           <Pressable
             accessible={false}
             onPress={() => setConflictVisible(false)}
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.scrim }]}
+            style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.scrim }]}
           />
           <SafeAreaView
             edges={['bottom', 'left', 'right']}
