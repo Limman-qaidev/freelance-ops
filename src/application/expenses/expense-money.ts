@@ -19,6 +19,43 @@ type ParsedDecimal = {
   normalized: string;
 };
 
+const SUPPORTED_CURRENCY_MINOR_DIGITS: Record<string, number> = {
+  AED: 2,
+  AUD: 2,
+  BGN: 2,
+  BRL: 2,
+  CAD: 2,
+  CHF: 2,
+  CNY: 2,
+  CZK: 2,
+  DKK: 2,
+  EUR: 2,
+  GBP: 2,
+  HKD: 2,
+  HUF: 2,
+  IDR: 2,
+  ILS: 2,
+  INR: 2,
+  JPY: 0,
+  KRW: 0,
+  MUR: 2,
+  MXN: 2,
+  MYR: 2,
+  NOK: 2,
+  NZD: 2,
+  PHP: 2,
+  PLN: 2,
+  RON: 2,
+  SAR: 2,
+  SEK: 2,
+  SGD: 2,
+  THB: 2,
+  TRY: 2,
+  USD: 2,
+  VND: 0,
+  ZAR: 2,
+};
+
 export function calculateExpenseAmounts(input: ExpenseAmountInput): ExpenseAmounts {
   const originalCurrency = normalizeCurrency(input.originalCurrency);
   const projectCurrency = normalizeCurrency(input.projectCurrency);
@@ -125,21 +162,11 @@ function normalizeCurrency(value: string): string {
 }
 
 function currencyMinorDigits(currency: string): number {
-  try {
-    const minorDigits = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-    }).resolvedOptions().maximumFractionDigits;
-    if (minorDigits === undefined) {
-      throw new Error(`Currency ${currency} does not expose minor-unit precision.`);
-    }
-    return minorDigits;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('minor-unit precision')) {
-      throw error;
-    }
+  const minorDigits = SUPPORTED_CURRENCY_MINOR_DIGITS[currency];
+  if (minorDigits === undefined) {
     throw new Error(`Currency ${currency} is not supported.`);
   }
+  return minorDigits;
 }
 
 function pow10(exponent: number): bigint {
