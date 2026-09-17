@@ -1,14 +1,17 @@
 import { ActivityService } from '@/application/activities/activity-service';
 import { WorkspaceService } from '@/application/bootstrap/workspace-service';
 import { ClientService } from '@/application/clients/client-service';
+import { ExpenseService } from '@/application/expenses/expense-service';
 import { ProjectService } from '@/application/projects/project-service';
 import { TaskService } from '@/application/tasks/task-service';
 import { ManualTimeService } from '@/application/time-tracking/manual-time-service';
 import { TimeTrackingService } from '@/application/time-tracking/time-tracking-service';
 import type { Workspace } from '@/domain/shared/workspace';
 import type { TransactionalDataDatabase } from '@/infrastructure/database/data-database';
+import { ExpoExpenseAttachmentStorage } from '@/infrastructure/filesystem/expo-expense-attachment-storage';
 import { SqliteActivityRepository } from '@/infrastructure/repositories/sqlite-activity-repository';
 import { SqliteClientRepository } from '@/infrastructure/repositories/sqlite-client-repository';
+import { SqliteExpenseRepository } from '@/infrastructure/repositories/sqlite-expense-repository';
 import { SqliteProjectRepository } from '@/infrastructure/repositories/sqlite-project-repository';
 import { SqliteTaskRepository } from '@/infrastructure/repositories/sqlite-task-repository';
 import { SqliteTimeHistoryRepository } from '@/infrastructure/repositories/sqlite-time-history-repository';
@@ -23,6 +26,7 @@ export type CoreApplication = {
   activityService: ActivityService;
   timeTrackingService: TimeTrackingService;
   manualTimeService: ManualTimeService;
+  expenseService: ExpenseService;
 };
 
 export type CoreApplicationOptions = {
@@ -63,6 +67,11 @@ export async function createCoreApplication(
     taskRepository,
     activityRepository,
   );
+  const expenseService = new ExpenseService(
+    new SqliteExpenseRepository(database),
+    projectRepository,
+    new ExpoExpenseAttachmentStorage(),
+  );
 
   await activityService.ensureDefaults();
 
@@ -74,5 +83,6 @@ export async function createCoreApplication(
     activityService,
     timeTrackingService,
     manualTimeService,
+    expenseService,
   };
 }
