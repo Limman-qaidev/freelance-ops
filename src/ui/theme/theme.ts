@@ -1,7 +1,7 @@
 import type { ThemePreference } from '@/preferences/ui-preferences';
 
 export type ResolvedThemeMode = 'light' | 'dark';
-export type SystemColorScheme = 'light' | 'dark' | null | undefined;
+export type SystemColorScheme = 'light' | 'dark' | 'unspecified' | null | undefined;
 
 type TypographyToken = {
   fontSize: number;
