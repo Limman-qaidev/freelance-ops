@@ -6,6 +6,7 @@ import MoreScreen from '../app/(tabs)/more';
 import PlanningScreen from '../app/(tabs)/planning';
 import ProjectsScreen from '../app/(tabs)/projects';
 import TasksScreen from '../app/(tabs)/tasks';
+import { UiTestProviders } from './helpers/ui-test-providers';
 import { ApplicationContextProvider } from '../src/providers/application-context';
 
 const shellApplication = {
@@ -31,19 +32,29 @@ const shellApplication = {
   },
 };
 
+function AppTabLayout() {
+  return (
+    <UiTestProviders language="en" themeMode="light">
+      <TabLayout />
+    </UiTestProviders>
+  );
+}
+
 function TodayWithApplication() {
   return (
-    <ApplicationContextProvider application={shellApplication as never}>
-      <TodayScreen />
-    </ApplicationContextProvider>
+    <UiTestProviders language="en" themeMode="light">
+      <ApplicationContextProvider application={shellApplication as never}>
+        <TodayScreen />
+      </ApplicationContextProvider>
+    </UiTestProviders>
   );
 }
 
 describe('application shell', () => {
-  it('renders Today and all bottom navigation destinations', async () => {
+  it('renders Today and all five localized bottom navigation destinations', async () => {
     await renderRouter(
       {
-        '(tabs)/_layout': TabLayout,
+        '(tabs)/_layout': AppTabLayout,
         '(tabs)/index': TodayWithApplication,
         '(tabs)/projects': ProjectsScreen,
         '(tabs)/tasks': TasksScreen,

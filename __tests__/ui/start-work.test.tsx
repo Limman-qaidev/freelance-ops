@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import type { ComponentType } from 'react';
 
+import { UiTestProviders } from '../helpers/ui-test-providers';
 import { ApplicationContextProvider } from '../../src/providers/application-context';
 
 jest.mock('expo-router', () => ({
@@ -160,23 +161,33 @@ function makeApplication(activeSession: typeof runningSession | null = null) {
   };
 }
 
+async function renderStartWork(
+  application: ReturnType<typeof makeApplication>,
+  language: 'en' | 'es' = 'en',
+  themeMode: 'light' | 'dark' = 'light',
+) {
+  const StartWorkScreen = loadStartWorkScreen();
+  return render(
+    <UiTestProviders language={language} themeMode={themeMode}>
+      <ApplicationContextProvider application={application as never}>
+        <StartWorkScreen />
+      </ApplicationContextProvider>
+    </UiTestProviders>,
+  );
+}
+
 describe('Start Work', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('starts immediately with only the preselected project when no timer is active', async () => {
-    const StartWorkScreen = loadStartWorkScreen();
     const application = makeApplication();
-    const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <StartWorkScreen />
-      </ApplicationContextProvider>,
-    );
+    const view = await renderStartWork(application);
 
     expect(await view.findByText('Mailing tool')).toBeTruthy();
-    expect(view.getByText('Task (optional)')).toBeTruthy();
-    expect(view.getByText('Activity (optional)')).toBeTruthy();
+    expect(view.getByText('Task · optional')).toBeTruthy();
+    expect(view.getByText('Activity · optional')).toBeTruthy();
 
     await fireEvent.press(view.getByLabelText('Start Work'));
 
@@ -192,26 +203,24 @@ describe('Start Work', () => {
     expect(router.replace).toHaveBeenCalledWith('/');
   });
 
-  it('lets the user change project and optionally select task, activity and description', async () => {
-    const StartWorkScreen = loadStartWorkScreen();
+  it('lets the user explicitly change project and optionally select task, activity and description', async () => {
     const application = makeApplication();
-    const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <StartWorkScreen />
-      </ApplicationContextProvider>,
-    );
+    const view = await renderStartWork(application);
 
     await view.findByText('Mailing tool');
     expect(view.queryByText('Paused engagement')).toBeNull();
 
+    await fireEvent.press(view.getByLabelText('Change project'));
     await fireEvent.press(view.getByLabelText('Select project Spare parts'));
     expect(await view.findByText('Catalogue parser')).toBeTruthy();
     expect(view.queryByText('Finished task')).toBeNull();
 
+    await fireEvent.press(view.getByLabelText('Select task'));
     await fireEvent.press(view.getByLabelText('Select task Catalogue parser'));
+    await fireEvent.press(view.getByLabelText('Select activity'));
     await fireEvent.press(view.getByLabelText('Select activity Development'));
     await fireEvent.changeText(
-      view.getByPlaceholderText('What are you working on?'),
+      view.getByPlaceholderText('Add an optional note'),
       'Build catalogue parser',
     );
     await fireEvent.press(view.getByLabelText('Start Work'));
@@ -227,13 +236,8 @@ describe('Start Work', () => {
   });
 
   it('requires an explicit stop-current decision when another timer is active', async () => {
-    const StartWorkScreen = loadStartWorkScreen();
     const application = makeApplication(runningSession);
-    const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <StartWorkScreen />
-      </ApplicationContextProvider>,
-    );
+    const view = await renderStartWork(application);
 
     await view.findByText('Mailing tool');
     await fireEvent.press(view.getByLabelText('Start Work'));
@@ -255,5 +259,15 @@ describe('Start Work', () => {
       application.timeTrackingService.startWork.mock.invocationCallOrder[0],
     );
     expect(router.replace).toHaveBeenCalledWith('/');
+  });
+
+  it('renders the focused form in Spanish and dark mode', async () => {
+    const view = await renderStartWork(makeApplication(), 'es', 'dark');
+
+    expect(await view.findByText('Iniciar trabajo')).toBeTruthy();
+    expect(view.getByText('Proyecto')).toBeTruthy();
+    expect(view.getByText('Tarea · opcional')).toBeTruthy();
+    expect(view.getByText('Actividad · opcional')).toBeTruthy();
+    expect(view.getByText('Descripción · opcional')).toBeTruthy();
   });
 });

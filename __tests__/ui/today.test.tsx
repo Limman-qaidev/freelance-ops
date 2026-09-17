@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import TodayScreen from '../../app/(tabs)/index';
+import { UiTestProviders } from '../helpers/ui-test-providers';
 import { ApplicationContextProvider } from '../../src/providers/application-context';
 
 jest.mock('expo-router', () => ({
@@ -85,7 +86,12 @@ const runningSession = {
   ],
 };
 
-function makeApplication(activeSession: typeof runningSession | null = null) {
+const allProjects = [activeProject, plannedProject, onHoldProject, completedProject];
+
+function makeApplication(
+  activeSession: typeof runningSession | null = null,
+  projects = allProjects,
+) {
   const pausedSession = {
     ...runningSession,
     state: 'PAUSED',
@@ -109,17 +115,8 @@ function makeApplication(activeSession: typeof runningSession | null = null) {
       getById: jest.fn(async () => client),
     },
     projectService: {
-      listActiveProjects: jest.fn(async () => [
-        activeProject,
-        plannedProject,
-        onHoldProject,
-        completedProject,
-      ]),
-      getById: jest.fn(async (id: string) =>
-        [activeProject, plannedProject, onHoldProject, completedProject].find(
-          (project) => project.id === id,
-        ) ?? null,
-      ),
+      listActiveProjects: jest.fn(async () => projects),
+      getById: jest.fn(async (id: string) => projects.find((project) => project.id === id) ?? null),
     },
     taskService: {},
     activityService: {},
@@ -133,18 +130,27 @@ function makeApplication(activeSession: typeof runningSession | null = null) {
   };
 }
 
+async function renderToday(
+  application: ReturnType<typeof makeApplication>,
+  language: 'en' | 'es' = 'en',
+  themeMode: 'light' | 'dark' = 'light',
+) {
+  return render(
+    <UiTestProviders language={language} themeMode={themeMode}>
+      <ApplicationContextProvider application={application as never}>
+        <TodayScreen />
+      </ApplicationContextProvider>
+    </UiTestProviders>,
+  );
+}
+
 describe('Today', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('lists trackable projects and exposes work and expense quick actions', async () => {
-    const application = makeApplication();
-    const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <TodayScreen />
-      </ApplicationContextProvider>,
-    );
+  it('lists only trackable projects and exposes the approved secondary actions', async () => {
+    const view = await renderToday(makeApplication());
 
     expect(await view.findByText('Mailing tool')).toBeTruthy();
     expect(view.getByText('Spare parts')).toBeTruthy();
@@ -158,22 +164,27 @@ describe('Today', () => {
       params: { projectId: activeProject.id },
     });
 
-    await fireEvent.press(view.getByLabelText('Open expenses from Today'));
-    expect(router.push).toHaveBeenCalledWith('/expenses');
+    await fireEvent.press(view.getByLabelText('Add manual time'));
+    expect(router.push).toHaveBeenCalledWith('/time-entry/new');
 
-    await fireEvent.press(view.getByLabelText('Add expense from Today'));
+    await fireEvent.press(view.getByLabelText('Add expense'));
     expect(router.push).toHaveBeenCalledWith('/expense/edit');
   });
 
-  it('recovers the persisted active session and exposes pause, resume and stop controls', async () => {
-    const application = makeApplication(runningSession);
-    const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <TodayScreen />
-      </ApplicationContextProvider>,
-    );
+  it('renders an actionable no-project state', async () => {
+    const view = await renderToday(makeApplication(null, []));
 
-    expect(await view.findByText('Active session')).toBeTruthy();
+    expect(await view.findByText('No active projects')).toBeTruthy();
+    expect(view.getByText('Create a project to start tracking time.')).toBeTruthy();
+    await fireEvent.press(view.getByLabelText('Create project'));
+    expect(router.push).toHaveBeenCalledWith('/projects');
+  });
+
+  it('recovers the persisted active session and preserves pause, resume and stop behavior', async () => {
+    const application = makeApplication(runningSession);
+    const view = await renderToday(application);
+
+    expect(await view.findByText('Running')).toBeTruthy();
     expect(view.getByText('00:01:30')).toBeTruthy();
     expect(view.getByText('Pause')).toBeTruthy();
     expect(view.getByText('Stop')).toBeTruthy();
@@ -181,6 +192,7 @@ describe('Today', () => {
     await fireEvent.press(view.getByText('Pause'));
     await waitFor(() => expect(application.timeTrackingService.pauseWork).toHaveBeenCalledTimes(1));
     expect(await view.findByText('Resume')).toBeTruthy();
+    expect(view.getByText('Paused')).toBeTruthy();
 
     await fireEvent.press(view.getByText('Resume'));
     await waitFor(() => expect(application.timeTrackingService.resumeWork).toHaveBeenCalledTimes(1));
@@ -188,6 +200,17 @@ describe('Today', () => {
 
     await fireEvent.press(view.getByText('Stop'));
     await waitFor(() => expect(application.timeTrackingService.stopWork).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(view.queryByText('Active session')).toBeNull());
+    await waitFor(() => expect(view.queryByText('Running')).toBeNull());
+  });
+
+  it('renders the same compact state in Spanish and dark mode', async () => {
+    const view = await renderToday(makeApplication(null, []), 'es', 'dark');
+
+    expect(await view.findByText('Hoy')).toBeTruthy();
+    expect(view.getByText('Proyectos activos')).toBeTruthy();
+    expect(view.getByText('No hay proyectos activos')).toBeTruthy();
+    expect(view.getByText('Crear proyecto')).toBeTruthy();
+    expect(view.getByText('Añadir tiempo manual')).toBeTruthy();
+    expect(view.getByText('Registrar gasto')).toBeTruthy();
   });
 });
