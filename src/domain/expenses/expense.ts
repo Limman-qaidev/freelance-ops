@@ -68,5 +68,5 @@ export interface ExpenseRepository {
   delete(expenseId: string): Promise<void>;
   addAttachment(attachment: ExpenseAttachment): Promise<void>;
   getById(expenseId: string): Promise<{ expense: Expense; attachments: ExpenseAttachment[] } | null>;
-  listRecent(limit: number): Promise<Array<{ expense: Expense; attachments: ExpenseAttachment[] }>>;
+  listRecent(limit: number): Promise<{ expense: Expense; attachments: ExpenseAttachment[] }[]>;
 }
