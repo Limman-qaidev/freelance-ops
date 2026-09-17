@@ -1,6 +1,8 @@
+import { useContext } from 'react';
 import { Pressable, Text } from 'react-native';
 
-import { useTheme } from '@/ui/theme/use-theme';
+import { lightTheme } from '@/ui/theme/theme';
+import { ThemeContext } from '@/ui/theme/theme-provider';
 
 type ActionButtonProps = {
   label: string;
@@ -17,7 +19,7 @@ export function ActionButton({
   variant = 'primary',
   disabled = false,
 }: ActionButtonProps) {
-  const { theme } = useTheme();
+  const theme = useContext(ThemeContext)?.theme ?? lightTheme;
 
   return (
     <Pressable
