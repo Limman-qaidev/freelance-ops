@@ -425,11 +425,13 @@ export default function TimeEntryEditorScreen() {
           multiline
         />
 
-        <ActionButton
-          label={busy ? 'Saving…' : 'Save'}
-          accessibilityLabel="Save time entry"
-          onPress={() => void save()}
-        />
+        {!savedWarning ? (
+          <ActionButton
+            label={busy ? 'Saving…' : 'Save'}
+            accessibilityLabel="Save time entry"
+            onPress={() => void save()}
+          />
+        ) : null}
         <ActionButton label="Back" variant="secondary" onPress={() => router.back()} />
 
         {!isNew ? (
