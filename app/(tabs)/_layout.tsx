@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import type { ColorValue } from 'react-native';
 
 import { useI18n } from '@/i18n/use-i18n';
 import { AppIcon, type AppIconName } from '@/ui/components/app-icon';
@@ -11,8 +12,12 @@ export default function TabLayout() {
   const tab = (title: string, icon: AppIconName) => ({
     title,
     tabBarLabel: title,
-    tabBarIcon: ({ color }: { color: string }) => (
-      <AppIcon name={icon} size={theme.sizing.bottomIcon} color={color} />
+    tabBarIcon: ({ color }: { color: ColorValue }) => (
+      <AppIcon
+        name={icon}
+        size={theme.sizing.bottomIcon}
+        color={typeof color === 'string' ? color : theme.colors.textMuted}
+      />
     ),
   });
 
