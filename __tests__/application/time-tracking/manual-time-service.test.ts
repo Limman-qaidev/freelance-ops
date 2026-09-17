@@ -265,9 +265,11 @@ describe('manual time and history service', () => {
           activityId: null,
           description: 'Wrong project',
           billable: true,
-          timezoneId: 'Europe/Madrid',
-          startedAtUtc: '2026-09-15T10:00:00.000Z',
-          endedAtUtc: '2026-09-15T11:00:00.000Z',
+          timing: {
+            timezoneId: 'Europe/Madrid',
+            startedAtUtc: '2026-09-15T10:00:00.000Z',
+            endedAtUtc: '2026-09-15T11:00:00.000Z',
+          },
         }),
       ).rejects.toThrow(/same project/i);
 
@@ -277,9 +279,11 @@ describe('manual time and history service', () => {
         activityId: IDS.activity,
         description: 'Corrected historical work',
         billable: false,
-        timezoneId: 'Indian/Mauritius',
-        startedAtUtc: '2026-09-15T09:00:00.000Z',
-        endedAtUtc: '2026-09-15T10:15:00.000Z',
+        timing: {
+          timezoneId: 'Indian/Mauritius',
+          startedAtUtc: '2026-09-15T09:00:00.000Z',
+          endedAtUtc: '2026-09-15T10:15:00.000Z',
+        },
       });
 
       expect(updated.record.timeEntry).toMatchObject({
@@ -305,6 +309,100 @@ describe('manual time and history service', () => {
       await service.delete(created.record.timeEntry.id);
       expect(await service.getById(created.record.timeEntry.id)).toBeNull();
 
+      sqlite.close();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves paused interval structure for metadata-only edits and rejects timing replacement', async () => {
+    const { SqliteTimeHistoryRepository, ManualTimeService } = loadManualTimeTypes();
+    const directory = mkdtempSync(join(tmpdir(), 'freelance-ops-history-paused-'));
+    const path = join(directory, 'history.sqlite');
+
+    try {
+      const sqlite = new DatabaseSync(path);
+      await migrateDatabase(createMigrationDatabase(sqlite));
+      const database = createDataDatabase(sqlite);
+      await seed(database);
+
+      const entryId = '77777777-7777-4777-8777-777777777778';
+      await database.runAsync(
+        `INSERT INTO time_entries (
+          id, project_id, description, billable, source, stopped_at_utc, created_at, updated_at
+        ) VALUES (?, ?, ?, 1, 'TIMER', ?, ?, ?)`,
+        entryId,
+        IDS.projectA,
+        'Original',
+        '2026-09-16T10:00:00.000Z',
+        '2026-09-16T08:00:00.000Z',
+        '2026-09-16T10:00:00.000Z',
+      );
+      await database.runAsync(
+        `INSERT INTO work_intervals (
+          id, time_entry_id, started_at_utc, ended_at_utc, timezone_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+        '88888888-8888-4888-8888-888888888881',
+        entryId,
+        '2026-09-16T08:00:00.000Z',
+        '2026-09-16T08:30:00.000Z',
+        'Europe/Madrid',
+        '2026-09-16T08:00:00.000Z',
+      );
+      await database.runAsync(
+        `INSERT INTO work_intervals (
+          id, time_entry_id, started_at_utc, ended_at_utc, timezone_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+        '88888888-8888-4888-8888-888888888882',
+        entryId,
+        '2026-09-16T09:00:00.000Z',
+        '2026-09-16T10:00:00.000Z',
+        'Europe/Madrid',
+        '2026-09-16T09:00:00.000Z',
+      );
+
+      const service = new ManualTimeService(
+        new SqliteTimeHistoryRepository(database),
+        new SqliteProjectRepository(database),
+        new SqliteTaskRepository(database),
+        new SqliteActivityRepository(database),
+        idGenerator(),
+        () => '2026-09-16T12:00:00.000Z',
+      );
+
+      const metadataOnly = await service.update(entryId, {
+        projectId: IDS.projectA,
+        taskId: IDS.taskA,
+        activityId: IDS.activity,
+        description: 'Metadata corrected',
+        billable: false,
+      });
+
+      expect(metadataOnly.record.intervals).toHaveLength(2);
+      expect(metadataOnly.record.durationMs).toBe(90 * 60 * 1000);
+      expect(metadataOnly.record.timeEntry).toMatchObject({
+        description: 'Metadata corrected',
+        taskId: IDS.taskA,
+        activityId: IDS.activity,
+        billable: false,
+      });
+
+      await expect(
+        service.update(entryId, {
+          projectId: IDS.projectA,
+          taskId: IDS.taskA,
+          activityId: IDS.activity,
+          description: 'Try flattening pauses',
+          billable: false,
+          timing: {
+            timezoneId: 'Europe/Madrid',
+            startedAtUtc: '2026-09-16T08:00:00.000Z',
+            endedAtUtc: '2026-09-16T10:00:00.000Z',
+          },
+        }),
+      ).rejects.toThrow(/multiple work intervals/i);
+
+      expect((await service.getById(entryId))?.intervals).toHaveLength(2);
       sqlite.close();
     } finally {
       rmSync(directory, { recursive: true, force: true });
