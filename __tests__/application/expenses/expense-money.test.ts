@@ -35,7 +35,7 @@ describe('expense money calculations', () => {
     });
   });
 
-  it('rejects malformed money, missing FX and unsafe integer results', () => {
+  it('rejects malformed money, missing FX, unsupported currencies and unsafe integer results', () => {
     expect(() =>
       calculateExpenseAmounts({
         originalAmount: '12.345',
@@ -53,6 +53,15 @@ describe('expense money calculations', () => {
         exchangeRateDecimal: null,
       }),
     ).toThrow(/exchange rate/i);
+
+    expect(() =>
+      calculateExpenseAmounts({
+        originalAmount: '12.34',
+        originalCurrency: 'ZZZ',
+        projectCurrency: 'EUR',
+        exchangeRateDecimal: '1',
+      }),
+    ).toThrow(/not supported/i);
 
     expect(() =>
       calculateExpenseAmounts({
