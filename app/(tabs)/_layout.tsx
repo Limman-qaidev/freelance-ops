@@ -12,7 +12,7 @@ export default function TabLayout() {
     title,
     tabBarLabel: title,
     tabBarIcon: ({ color }: { color: string }) => (
-      <AppIcon name={icon} size={theme.sizing.tabIcon} color={color} />
+      <AppIcon name={icon} size={theme.sizing.bottomIcon} color={color} />
     ),
   });
 
