@@ -71,25 +71,41 @@ export class ManualTimeService {
   ): Promise<ManualTimeMutationResult> {
     const current = await this.requireRecord(timeEntryId);
     await this.validateRelationships(input.projectId, input.taskId, input.activityId);
-    const timing = resolveRange(input.startedAtUtc, input.endedAtUtc);
-    validateTimezone(input.timezoneId);
 
-    const timeEntry: TimeEntry = {
+    const timestamp = this.now();
+    const metadata: TimeEntry = {
       ...current.timeEntry,
       projectId: input.projectId,
       taskId: input.taskId,
       activityId: input.activityId,
       description: input.description?.trim() || null,
       billable: input.billable,
+      updatedAt: timestamp,
+    };
+
+    if (!input.timing) {
+      await this.repository.updateHistoricalMetadata(metadata);
+      return { record: await this.requireRecord(timeEntryId), warnings: [] };
+    }
+
+    if (current.intervals.length !== 1) {
+      throw new Error(
+        'Timing edits are not supported for sessions with multiple work intervals. Edit metadata only.',
+      );
+    }
+
+    validateTimezone(input.timing.timezoneId);
+    const timing = resolveRange(input.timing.startedAtUtc, input.timing.endedAtUtc);
+    const timeEntry: TimeEntry = {
+      ...metadata,
       stoppedAtUtc: timing.endedAtUtc,
-      updatedAt: this.now(),
     };
     const interval: WorkInterval = {
-      id: this.generateId(),
+      id: current.intervals[0]?.id ?? this.generateId(),
       timeEntryId,
       startedAtUtc: timing.startedAtUtc,
       endedAtUtc: timing.endedAtUtc,
-      timezoneId: input.timezoneId,
+      timezoneId: input.timing.timezoneId,
       createdAt: current.intervals[0]?.createdAt ?? current.timeEntry.createdAt,
     };
 
