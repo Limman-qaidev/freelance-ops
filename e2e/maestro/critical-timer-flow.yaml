@@ -1,0 +1,62 @@
+appId: com.jonathansalgadonieto.freelanceops
+---
+- launchApp:
+    clearState: true
+
+- assertVisible: "Today"
+- tapOn: "Projects"
+- assertVisible: "Projects"
+
+# Synthetic client used only by the E2E test.
+- tapOn: "Client name"
+- inputText: "REL001 Client"
+- hideKeyboard
+- tapOn: "Add client"
+- assertVisible: "REL001 Client"
+
+# Synthetic project used only by the E2E test.
+- scrollUntilVisible:
+    element: "Project name"
+    direction: DOWN
+- tapOn: "Project name"
+- inputText: "REL001 Project"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Add project"
+    direction: DOWN
+- tapOn: "Add project"
+- assertVisible: "REL001 Project"
+
+# Start from Today with Project as the only mandatory dimension.
+- tapOn: "Today"
+- assertVisible: "REL001 Project"
+- tapOn: "Start work on REL001 Project"
+- assertVisible: "Start Work"
+- tapOn: "Start Work"
+
+- assertVisible: "Active session"
+- assertVisible: "REL001 Project"
+- assertVisible: "Running"
+
+# Background and reopen without clearing or stopping application state.
+- pressKey: home
+- launchApp:
+    stopApp: false
+- assertVisible: "Active session"
+- assertVisible: "REL001 Project"
+- assertVisible: "Running"
+
+# Pause/resume/stop must operate on the recovered persisted session.
+- tapOn: "Pause"
+- assertVisible: "Paused"
+- tapOn: "Resume"
+- assertVisible: "Running"
+- tapOn: "Stop"
+- assertNotVisible: "Active session"
+
+# The stopped timer must be present in History.
+- tapOn: "More"
+- tapOn: "Open time history"
+- assertVisible: "Time history"
+- assertVisible: "REL001 Project"
+- assertVisible: "Timer"
