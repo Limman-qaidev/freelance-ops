@@ -17,7 +17,7 @@ export function parseAmountToMinorUnits(value: string): number {
   const normalized = normalizeDecimalInput(value, 'Amount');
   const [whole, fraction = ''] = normalized.split('.');
   if (fraction.length > 2) {
-    throw new Error('Amount cannot contain more than two minor-unit decimals.');
+    throw new Error('Amount cannot contain more than two minor units decimals.');
   }
 
   const minor = BigInt(whole) * 100n + BigInt((fraction + '00').slice(0, 2));
