@@ -52,6 +52,7 @@ const existingRecord = {
     projectAmountMinor: 1111,
     projectCurrency: 'EUR',
     reimbursable: true,
+    billable: false,
     status: 'PENDING',
     createdAt: '2026-09-16T12:00:00.000Z',
     updatedAt: '2026-09-16T12:00:00.000Z',
@@ -135,6 +136,7 @@ describe('expense editor', () => {
         originalCurrency: 'USD',
         exchangeRateDecimal: '0.9',
         reimbursable: true,
+        billable: false,
       },
       receipt,
     );
@@ -168,6 +170,7 @@ describe('expense editor', () => {
         originalAmount: '12.34',
         originalCurrency: 'USD',
         exchangeRateDecimal: '0.9',
+        billable: false,
       }),
     );
     expect(application.expenseService.addPreparedReceipt).not.toHaveBeenCalled();
