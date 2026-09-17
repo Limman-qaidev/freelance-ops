@@ -24,6 +24,7 @@ export type ExpenseMutationInput = {
   originalCurrency: string;
   exchangeRateDecimal: string | null;
   reimbursable: boolean;
+  billable?: boolean;
 };
 
 export class ExpenseService {
@@ -53,7 +54,7 @@ export class ExpenseService {
 
   async create(
     input: ExpenseMutationInput,
-    preparedReceipt?: PreparedExpenseAttachment | null,
+    preparedReceipts?: PreparedExpenseAttachment | PreparedExpenseAttachment[] | null,
   ): Promise<ExpenseRecord> {
     const project = await this.requireProject(input.projectId);
     const timestamp = this.now();
@@ -71,20 +72,22 @@ export class ExpenseService {
       description: input.description?.trim() || null,
       ...amounts,
       reimbursable: input.reimbursable,
+      billable: input.billable ?? false,
       status: 'PENDING',
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-    const attachment = preparedReceipt
-      ? bindAttachment(preparedReceipt, expense.id)
-      : undefined;
+    const prepared = normalizePreparedReceipts(preparedReceipts);
+    const attachments = prepared.map((receipt) => bindAttachment(receipt, expense.id));
 
     try {
-      await this.repository.create(expense, attachment);
+      await this.repository.create(expense, attachments);
     } catch (error) {
-      if (preparedReceipt) {
-        await this.attachmentStorage.delete(preparedReceipt.localUri).catch(() => undefined);
-      }
+      await Promise.all(
+        prepared.map((receipt) =>
+          this.attachmentStorage.delete(receipt.localUri).catch(() => undefined),
+        ),
+      );
       throw error;
     }
 
@@ -111,6 +114,7 @@ export class ExpenseService {
       description: input.description?.trim() || null,
       ...amounts,
       reimbursable: input.reimbursable,
+      billable: input.billable ?? current.expense.billable,
       updatedAt: this.now(),
     };
     await this.repository.update(expense);
@@ -198,6 +202,13 @@ export class ExpenseService {
       integrityWarnings: Array.from(warnings),
     };
   }
+}
+
+function normalizePreparedReceipts(
+  receipts?: PreparedExpenseAttachment | PreparedExpenseAttachment[] | null,
+): PreparedExpenseAttachment[] {
+  if (!receipts) return [];
+  return Array.isArray(receipts) ? receipts : [receipts];
 }
 
 function bindAttachment(
