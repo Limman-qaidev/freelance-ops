@@ -7,6 +7,8 @@
     "scheme": "freelanceops",
     "userInterfaceStyle": "automatic",
     "android": {
+      "package": "com.jonathansalgadonieto.freelanceops",
+      "versionCode": 1,
       "predictiveBackGestureEnabled": false
     },
     "web": {
