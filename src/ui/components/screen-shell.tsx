@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useContext } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useTheme } from '@/ui/theme/use-theme';
+import { lightTheme } from '@/ui/theme/theme';
+import { ThemeContext } from '@/ui/theme/theme-provider';
 
 type ScreenShellProps = {
   title: string;
@@ -11,7 +12,7 @@ type ScreenShellProps = {
 };
 
 export function ScreenShell({ title, subtitle, children }: ScreenShellProps) {
-  const { theme } = useTheme();
+  const theme = useContext(ThemeContext)?.theme ?? lightTheme;
 
   return (
     <SafeAreaView
