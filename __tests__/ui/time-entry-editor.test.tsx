@@ -142,6 +142,7 @@ describe('time entry editor', () => {
     await fireEvent.changeText(view.getByLabelText('Work date'), '2026-09-16');
     await fireEvent.changeText(view.getByLabelText('Start time'), '09:00');
     await fireEvent.changeText(view.getByLabelText('Duration minutes'), '60');
+    await fireEvent.changeText(view.getByLabelText('Timezone'), 'Europe/London');
     await fireEvent.changeText(view.getByLabelText('Description'), 'Manual repair');
     await fireEvent.press(view.getByLabelText('Save time entry'));
 
@@ -152,6 +153,7 @@ describe('time entry editor', () => {
         taskId: task.id,
         activityId: activity.id,
         description: 'Manual repair',
+        timezoneId: 'Europe/London',
         timing: expect.objectContaining({ kind: 'DURATION', durationMinutes: 60 }),
       }),
     );
@@ -226,6 +228,7 @@ describe('time entry editor', () => {
 
     expect(await view.findByText(/timing is locked because this session contains pauses/i)).toBeTruthy();
     expect(view.queryByLabelText('Work date')).toBeNull();
+    expect(view.queryByLabelText('Timezone')).toBeNull();
     await fireEvent.changeText(view.getByLabelText('Description'), 'Keep pause structure');
     await fireEvent.press(view.getByLabelText('Save time entry'));
 
