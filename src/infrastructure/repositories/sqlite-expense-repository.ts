@@ -110,7 +110,7 @@ export class SqliteExpenseRepository implements ExpenseRepository {
 
   async listRecent(
     limit: number,
-  ): Promise<Array<{ expense: Expense; attachments: ExpenseAttachment[] }>> {
+  ): Promise<{ expense: Expense; attachments: ExpenseAttachment[] }[]> {
     const safeLimit = Math.max(1, Math.floor(limit));
     const rows = await this.database.getAllAsync<ExpenseRow>(
       `SELECT ${EXPENSE_COLUMNS}
