@@ -40,21 +40,24 @@ If `adb` is not found, add the Android SDK `platform-tools` directory to the Win
 %LOCALAPPDATA%\Android\Sdk\platform-tools
 ```
 
-## 2. Prepare a clean checkout
+## 2. Prepare the exact release candidate
 
-From the repository directory:
+REL-001 is validated before its PR is merged, so build and test the candidate branch itself:
 
 ```powershell
-git switch main
-git pull --ff-only
+git fetch origin
+git switch codex/rel-001-android-readiness
+git pull --ff-only origin codex/rel-001-android-readiness
 npm ci
 ```
 
-Confirm the commit being validated and copy it into `real-data-readiness.md`:
+Confirm the exact candidate commit being validated and copy it into `real-data-readiness.md`:
 
 ```powershell
 git rev-parse HEAD
 ```
+
+After #23 is eventually merged, future reproduction of this checkpoint can instead use the recorded merge commit on `main`.
 
 Do not use a working tree containing real client data, receipts, exported reports, databases, backups, or secrets.
 
@@ -192,7 +195,13 @@ Complete the manual device checks in `real-data-readiness.md`. These checks inte
 
 Use synthetic validation data until the final SAFE FOR REAL DATA decision is PASS.
 
-## 9. Failure policy
+## 9. Recording the result without invalidating the tested build
+
+After the physical checks, update `real-data-readiness.md` on the same PR with the recorded candidate SHA and PASS/FAIL evidence.
+
+That documentation-only commit changes the PR head but does not change the application binary that was tested. If any application, configuration, dependency, native-build, database, or E2E-flow file changes after the candidate build, create a new candidate build and repeat every affected mandatory check before merge.
+
+## 10. Failure policy
 
 For any mandatory FAIL:
 
@@ -204,7 +213,7 @@ For any mandatory FAIL:
 
 Never convert a failure to PASS based only on code inspection.
 
-## 10. Release decision
+## 11. Release decision
 
 The app may be declared:
 
@@ -212,6 +221,6 @@ The app may be declared:
 SAFE FOR REAL DATA
 ```
 
-only when every mandatory row in `real-data-readiness.md` is PASS for the recorded commit and physical Android device.
+only when every mandatory row in `real-data-readiness.md` is PASS for the recorded candidate commit and physical Android device.
 
 Play Store publication, EAS/cloud builds and signed store release artifacts are outside REL-001.
