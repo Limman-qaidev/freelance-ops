@@ -19,6 +19,7 @@ export interface Expense {
   projectAmountMinor: number;
   projectCurrency: string;
   reimbursable: boolean;
+  billable: boolean;
   status: ExpenseStatus;
   createdAt: string;
   updatedAt: string;
@@ -62,7 +63,7 @@ export interface ExpenseAttachmentStorage {
 }
 
 export interface ExpenseRepository {
-  create(expense: Expense, attachment?: ExpenseAttachment): Promise<void>;
+  create(expense: Expense, attachments?: ExpenseAttachment[]): Promise<void>;
   update(expense: Expense): Promise<void>;
   delete(expenseId: string): Promise<void>;
   addAttachment(attachment: ExpenseAttachment): Promise<void>;
