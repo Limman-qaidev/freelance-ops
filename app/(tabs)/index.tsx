@@ -1,13 +1,19 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Project } from '@/domain/projects/project';
 import type { TimerSession } from '@/domain/time-tracking/work-interval';
+import { useI18n } from '@/i18n/use-i18n';
 import { useApplication } from '@/providers/application-context';
 import { ActionButton } from '@/ui/components/action-button';
-import { ScreenShell } from '@/ui/components/screen-shell';
-import { colors, radii, spacing, typography } from '@/ui/theme/tokens';
+import { ActiveTimerCard } from '@/ui/components/active-timer-card';
+import { AppHeader } from '@/ui/components/app-header';
+import { EmptyState } from '@/ui/components/empty-state';
+import { ProjectRow } from '@/ui/components/project-row';
+import { SectionHeader } from '@/ui/components/section-header';
+import { useTheme } from '@/ui/theme/use-theme';
 
 type ProjectCard = {
   project: Project;
@@ -28,12 +34,34 @@ function formatDuration(milliseconds: number): string {
     .join(':');
 }
 
+function localeFor(language: 'es' | 'en'): string {
+  return language === 'es' ? 'es-ES' : 'en-US';
+}
+
+function formatToday(language: 'es' | 'en'): string {
+  return new Intl.DateTimeFormat(localeFor(language), {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date());
+}
+
+function formatProjectDate(value: string, language: 'es' | 'en'): string {
+  const date = new Date(`${value}T12:00:00`);
+  return new Intl.DateTimeFormat(localeFor(language), {
+    day: 'numeric',
+    month: 'short',
+  }).format(date);
+}
+
 export default function TodayScreen() {
   const { clientService, projectService, timeTrackingService } = useApplication();
+  const { language, t } = useI18n();
+  const { theme } = useTheme();
   const [projectCards, setProjectCards] = useState<ProjectCard[]>([]);
   const [activeSession, setActiveSession] = useState<TimerSession | null>(null);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
-  const [activeClientName, setActiveClientName] = useState<string>('');
+  const [activeClientName, setActiveClientName] = useState('');
   const [elapsedMs, setElapsedMs] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +79,7 @@ export default function TodayScreen() {
             const client = await clientService.getById(project.clientId);
             return {
               project,
-              clientName: client?.name ?? 'Unknown client',
+              clientName: client?.name ?? t('common.unknownClient'),
             };
           }),
         );
@@ -65,7 +93,8 @@ export default function TodayScreen() {
             (await projectService.getById(session.timeEntry.projectId));
           if (sessionProject) {
             sessionClientName =
-              (await clientService.getById(sessionProject.clientId))?.name ?? 'Unknown client';
+              (await clientService.getById(sessionProject.clientId))?.name ??
+              t('common.unknownClient');
           }
           duration = await timeTrackingService.getElapsedDuration(new Date().toISOString());
         }
@@ -78,13 +107,13 @@ export default function TodayScreen() {
         setElapsedMs(duration);
       })
       .catch(() => {
-        if (mounted) setError('Unable to load your local work state.');
+        if (mounted) setError(t('today.errorLoad'));
       });
 
     return () => {
       mounted = false;
     };
-  }, [clientService, projectService, timeTrackingService]);
+  }, [clientService, projectService, t, timeTrackingService]);
 
   useEffect(() => {
     if (!activeSession || activeSession.state !== 'RUNNING') return undefined;
@@ -109,8 +138,9 @@ export default function TodayScreen() {
       const session = await timeTrackingService.pauseWork();
       setActiveSession(session);
       setElapsedMs(await timeTrackingService.getElapsedDuration(new Date().toISOString()));
+      setError(null);
     } catch {
-      setError('Unable to pause the current timer.');
+      setError(t('today.errorPause'));
     }
   }
 
@@ -119,8 +149,9 @@ export default function TodayScreen() {
       const session = await timeTrackingService.resumeWork();
       setActiveSession(session);
       setElapsedMs(await timeTrackingService.getElapsedDuration(new Date().toISOString()));
+      setError(null);
     } catch {
-      setError('Unable to resume the current timer.');
+      setError(t('today.errorResume'));
     }
   }
 
@@ -131,8 +162,9 @@ export default function TodayScreen() {
       setActiveProject(null);
       setActiveClientName('');
       setElapsedMs(0);
+      setError(null);
     } catch {
-      setError('Unable to stop the current timer.');
+      setError(t('today.errorStop'));
     }
   }
 
@@ -144,213 +176,101 @@ export default function TodayScreen() {
   }
 
   return (
-    <ScreenShell
-      title="Today"
-      subtitle="Choose a project and start tracking in seconds. Add structure only when it helps."
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
     >
-      <ScrollView contentContainerStyle={styles.content}>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: theme.spacing.lg,
+          paddingBottom: theme.spacing.xl,
+        }}
+      >
+        <AppHeader title={t('nav.today')} subtitle={formatToday(language)} />
+
+        {error ? (
+          <Text
+            accessibilityRole="alert"
+            style={{
+              ...theme.typography.caption,
+              color: theme.colors.error,
+              marginTop: theme.spacing.sm,
+            }}
+          >
+            {error}
+          </Text>
+        ) : null}
 
         {activeSession ? (
-          <View style={styles.activeCard}>
-            <Text style={styles.eyebrow}>Active session</Text>
-            <Text style={styles.activeTitle}>{activeProject?.name ?? 'Current project'}</Text>
-            {activeClientName ? <Text style={styles.muted}>{activeClientName}</Text> : null}
-            <Text style={styles.timer}>{formatDuration(elapsedMs)}</Text>
-            <Text style={styles.stateLabel}>{activeSession.state === 'PAUSED' ? 'Paused' : 'Running'}</Text>
-            <View style={styles.actions}>
-              {activeSession.state === 'RUNNING' ? (
-                <ActionButton label="Pause" onPress={() => void pause()} />
-              ) : (
-                <ActionButton label="Resume" onPress={() => void resume()} />
-              )}
-              <ActionButton label="Stop" variant="secondary" onPress={() => void stop()} />
-            </View>
+          <View style={{ marginTop: theme.spacing.lg }}>
+            <ActiveTimerCard
+              projectName={activeProject?.name ?? t('today.currentProject')}
+              context={activeClientName || undefined}
+              elapsed={formatDuration(elapsedMs)}
+              status={activeSession.state === 'PAUSED' ? 'paused' : 'running'}
+              statusLabel={
+                activeSession.state === 'PAUSED' ? t('timer.paused') : t('timer.running')
+              }
+              pauseLabel={t('timer.pause')}
+              resumeLabel={t('timer.resume')}
+              stopLabel={t('timer.stop')}
+              onPause={() => void pause()}
+              onResume={() => void resume()}
+              onStop={() => void stop()}
+            />
           </View>
         ) : null}
 
-        <View style={styles.quickActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open expenses from Today"
-            style={styles.quickAction}
-            onPress={() => router.push('/expenses' as never)}
-          >
-            <Text style={styles.quickActionText}>Expenses</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Add expense from Today"
-            style={styles.quickAction}
-            onPress={() => router.push('/expense/edit' as never)}
-          >
-            <Text style={styles.quickActionText}>Add expense</Text>
-          </Pressable>
-        </View>
+        <View style={{ marginTop: activeSession ? theme.spacing.xl : theme.spacing.lg }}>
+          <SectionHeader title={t('today.activeProjects')} />
+          <View style={{ marginTop: theme.spacing.sm, gap: theme.spacing.sm }}>
+            {projectCards.length === 0 ? (
+              <EmptyState
+                title={t('today.noActiveProjects')}
+                body={t('today.noActiveProjectsBody')}
+                actionLabel={t('common.createProject')}
+                onActionPress={() => router.push('/projects' as never)}
+              />
+            ) : (
+              projectCards.map(({ project, clientName }) => {
+                const statusLabel =
+                  project.status === 'PLANNED' ? t('project.planned') : t('project.active');
+                const metadata = project.plannedEndDate
+                  ? `${t('today.target')} ${formatProjectDate(project.plannedEndDate, language)}`
+                  : undefined;
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active projects</Text>
-          <Text style={styles.muted}>Tap one to prepare a work session.</Text>
-        </View>
-
-        {projectCards.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.cardTitle}>No trackable projects yet</Text>
-            <Text style={styles.muted}>Create or reactivate a project from Projects.</Text>
+                return (
+                  <ProjectRow
+                    key={project.id}
+                    projectName={project.name}
+                    clientName={clientName}
+                    statusLabel={statusLabel}
+                    metadata={metadata}
+                    trailingIcon="play"
+                    accessibilityLabel={`${t('today.startWorkOn')} ${project.name}`}
+                    onPress={() => openStartWork(project.id)}
+                  />
+                );
+              })
+            )}
           </View>
-        ) : (
-          projectCards.map(({ project, clientName }) => (
-            <Pressable
-              key={project.id}
-              accessibilityRole="button"
-              accessibilityLabel={`Start work on ${project.name}`}
-              onPress={() => openStartWork(project.id)}
-              style={styles.projectCard}
-            >
-              <View style={styles.projectHeader}>
-                <View style={styles.projectCopy}>
-                  <Text style={styles.cardTitle}>{project.name}</Text>
-                  <Text style={styles.muted}>{clientName}</Text>
-                </View>
-                <View style={styles.statusPill}>
-                  <Text style={styles.statusText}>{project.status === 'PLANNED' ? 'Planned' : 'Active'}</Text>
-                </View>
-              </View>
-              {project.plannedEndDate ? (
-                <Text style={styles.meta}>Target {project.plannedEndDate}</Text>
-              ) : null}
-              <Text style={styles.startHint}>Start work →</Text>
-            </Pressable>
-          ))
-        )}
+        </View>
+
+        <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
+          <ActionButton
+            label={t('common.addManualTime')}
+            accessibilityLabel={t('common.addManualTime')}
+            variant="secondary"
+            onPress={() => router.push('/time-entry/new' as never)}
+          />
+          <ActionButton
+            label={t('common.addExpense')}
+            accessibilityLabel={t('common.addExpense')}
+            variant="secondary"
+            onPress={() => router.push('/expense/edit' as never)}
+          />
+        </View>
       </ScrollView>
-    </ScreenShell>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  content: {
-    gap: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-  activeCard: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#BBF7D0',
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  eyebrow: {
-    color: colors.success,
-    fontSize: typography.caption,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  activeTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.sectionTitle,
-    fontWeight: '700',
-  },
-  timer: {
-    color: colors.textPrimary,
-    fontSize: 32,
-    fontVariant: ['tabular-nums'],
-    fontWeight: '700',
-  },
-  stateLabel: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-    fontWeight: '600',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  quickAction: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  quickActionText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: '700',
-  },
-  sectionHeader: {
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.sectionTitle,
-    fontWeight: '700',
-  },
-  projectCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  projectHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  projectCopy: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  cardTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.body,
-    fontWeight: '700',
-  },
-  muted: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-  },
-  meta: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-  },
-  statusPill: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: radii.lg,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  statusText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: '700',
-  },
-  startHint: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: '700',
-  },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    gap: spacing.xs,
-  },
-  error: {
-    color: '#B91C1C',
-    fontSize: typography.caption,
-    fontWeight: '600',
-  },
-});
