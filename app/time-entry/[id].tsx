@@ -411,7 +411,17 @@ export default function TimeEntryEditorScreen() {
                 />
               </>
             )}
-            <Text style={styles.timezone}>Timezone: {timezoneId}</Text>
+
+            <Text style={styles.label}>Timezone</Text>
+            <TextInput
+              accessibilityLabel="Timezone"
+              style={styles.input}
+              value={timezoneId}
+              onChangeText={setTimezoneId}
+              placeholder="Europe/Madrid"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
           </>
         )}
 
@@ -524,10 +534,6 @@ const styles = StyleSheet.create({
   descriptionInput: {
     minHeight: 88,
     textAlignVertical: 'top',
-  },
-  timezone: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
   },
   muted: {
     color: colors.textMuted,
