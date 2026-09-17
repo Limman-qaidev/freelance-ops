@@ -169,6 +169,25 @@ export default function TodayScreen() {
           </View>
         ) : null}
 
+        <View style={styles.quickActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open expenses from Today"
+            style={styles.quickAction}
+            onPress={() => router.push('/expenses' as never)}
+          >
+            <Text style={styles.quickActionText}>Expenses</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add expense from Today"
+            style={styles.quickAction}
+            onPress={() => router.push('/expense/edit' as never)}
+          >
+            <Text style={styles.quickActionText}>Add expense</Text>
+          </Pressable>
+        </View>
+
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Active projects</Text>
           <Text style={styles.muted}>Tap one to prepare a work session.</Text>
@@ -247,6 +266,24 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  quickAction: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  quickActionText: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: '700',
   },
   sectionHeader: {
     gap: spacing.xs,

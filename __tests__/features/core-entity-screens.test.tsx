@@ -1,6 +1,13 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { router } from 'expo-router';
 
 import { ApplicationContextProvider } from '../../src/providers/application-context';
+
+jest.mock('expo-router', () => ({
+  router: {
+    push: jest.fn(),
+  },
+}));
 
 const client = {
   id: 'client-1',
@@ -88,6 +95,8 @@ function makeApplication() {
 }
 
 describe('core entity mobile screens', () => {
+  beforeEach(() => jest.clearAllMocks());
+
   it('manages clients and projects through application services', async () => {
     const { ProjectsManagementScreen } = jest.requireActual(
       '../../src/features/projects/projects-management-screen',
@@ -122,6 +131,12 @@ describe('core entity mobile screens', () => {
         projectCurrency: 'EUR',
       }),
     );
+
+    await fireEvent.press(view.getByLabelText('Add expense for Mailing tool'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/expense/edit',
+      params: { projectId: 'project-1' },
+    });
 
     await fireEvent.press(view.getByLabelText('Archive project Mailing tool'));
     expect(application.projectService.archive).toHaveBeenCalledWith('project-1');

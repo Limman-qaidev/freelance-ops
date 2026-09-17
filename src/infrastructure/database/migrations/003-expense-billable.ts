@@ -1,0 +1,6 @@
+export const EXPENSE_BILLABLE_SCHEMA_VERSION = 3;
+
+export const EXPENSE_BILLABLE_SQL = `
+ALTER TABLE expenses
+  ADD COLUMN billable INTEGER NOT NULL DEFAULT 0 CHECK (billable IN (0, 1));
+`;

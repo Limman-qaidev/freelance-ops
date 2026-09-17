@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Pressable,
@@ -211,6 +212,16 @@ export function ProjectsManagementScreen() {
           return (
             <EntityCard key={project.id} title={project.name} detail={`${owner?.name ?? 'Unknown client'} · ${project.status} · ${project.projectCurrency}`}>
               <SecondaryButton label="Edit" accessibilityLabel={`Edit project ${project.name}`} onPress={() => editProject(project)} />
+              <SecondaryButton
+                label="Add expense"
+                accessibilityLabel={`Add expense for ${project.name}`}
+                onPress={() =>
+                  router.push({
+                    pathname: '/expense/edit' as never,
+                    params: { projectId: project.id },
+                  })
+                }
+              />
               <SecondaryButton label="Archive" accessibilityLabel={`Archive project ${project.name}`} onPress={() => void archiveProject(project.id)} />
             </EntityCard>
           );

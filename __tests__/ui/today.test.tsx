@@ -138,7 +138,7 @@ describe('Today', () => {
     jest.clearAllMocks();
   });
 
-  it('lists trackable projects with client context and opens Start Work for the selected project', async () => {
+  it('lists trackable projects and exposes work and expense quick actions', async () => {
     const application = makeApplication();
     const view = await render(
       <ApplicationContextProvider application={application as never}>
@@ -153,11 +153,16 @@ describe('Today', () => {
     expect(view.getAllByText('Maubank').length).toBeGreaterThan(0);
 
     await fireEvent.press(view.getByLabelText('Start work on Mailing tool'));
-
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/start-work',
       params: { projectId: activeProject.id },
     });
+
+    await fireEvent.press(view.getByLabelText('Open expenses from Today'));
+    expect(router.push).toHaveBeenCalledWith('/expenses');
+
+    await fireEvent.press(view.getByLabelText('Add expense from Today'));
+    expect(router.push).toHaveBeenCalledWith('/expense/edit');
   });
 
   it('recovers the persisted active session and exposes pause, resume and stop controls', async () => {

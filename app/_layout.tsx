@@ -13,6 +13,8 @@ export default function RootLayout() {
           <Stack.Screen name="start-work" />
           <Stack.Screen name="time-history" />
           <Stack.Screen name="time-entry/[id]" />
+          <Stack.Screen name="expenses" />
+          <Stack.Screen name="expense/edit" />
         </Stack>
         <StatusBar style="auto" />
       </ApplicationProvider>
