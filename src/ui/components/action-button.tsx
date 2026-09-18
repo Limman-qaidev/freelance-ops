@@ -1,6 +1,7 @@
 import { useContext } from 'react';
-import { Pressable, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
+import { AppIcon, type AppIconName } from '@/ui/components/app-icon';
 import { lightTheme } from '@/ui/theme/theme';
 import { ThemeContext } from '@/ui/theme/theme-provider';
 
@@ -10,6 +11,7 @@ type ActionButtonProps = {
   accessibilityLabel?: string;
   variant?: 'primary' | 'secondary' | 'danger';
   disabled?: boolean;
+  leadingIcon?: AppIconName;
 };
 
 export function ActionButton({
@@ -18,8 +20,17 @@ export function ActionButton({
   accessibilityLabel,
   variant = 'primary',
   disabled = false,
+  leadingIcon,
 }: ActionButtonProps) {
   const theme = useContext(ThemeContext)?.theme ?? lightTheme;
+
+  const contentColor = disabled
+    ? theme.colors.disabledText
+    : variant === 'primary'
+      ? theme.colors.onAccent
+      : variant === 'danger'
+        ? theme.colors.error
+        : theme.colors.textPrimary;
 
   return (
     <Pressable
@@ -49,7 +60,7 @@ export function ActionButton({
         return {
           minHeight: theme.sizing.buttonHeight,
           paddingHorizontal: theme.spacing.lg,
-          borderRadius: theme.radii.md,
+          borderRadius: theme.radii.sm,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor,
@@ -58,20 +69,10 @@ export function ActionButton({
         };
       }}
     >
-      <Text
-        style={{
-          ...theme.typography.bodyStrong,
-          color: disabled
-            ? theme.colors.disabledText
-            : variant === 'primary'
-              ? theme.colors.onAccent
-              : variant === 'danger'
-                ? theme.colors.error
-                : theme.colors.textPrimary,
-        }}
-      >
-        {label}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm }}>
+        {leadingIcon ? <AppIcon name={leadingIcon} size={20} color={contentColor} /> : null}
+        <Text style={{ ...theme.typography.bodyStrong, color: contentColor }}>{label}</Text>
+      </View>
     </Pressable>
   );
 }
