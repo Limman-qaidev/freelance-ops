@@ -430,7 +430,7 @@ export default function TimeEntryEditorScreen() {
 
         <TextField
           label={t('timeEntry.descriptionOptional')}
-          accessibilityLabel="Descripción"
+          accessibilityLabel={t('timeEntry.descriptionA11y')}
           placeholder={t('timeEntry.descriptionPlaceholder')}
           multiline
           value={description}
