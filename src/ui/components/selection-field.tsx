@@ -1,7 +1,9 @@
+import { useContext } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { AppIcon } from '@/ui/components/app-icon';
-import { useTheme } from '@/ui/theme/use-theme';
+import { lightTheme } from '@/ui/theme/theme';
+import { ThemeContext } from '@/ui/theme/theme-provider';
 
 type SelectionFieldProps = {
   label: string;
@@ -16,7 +18,7 @@ export function SelectionField({
   accessibilityLabel,
   onPress,
 }: SelectionFieldProps) {
-  const { theme } = useTheme();
+  const theme = useContext(ThemeContext)?.theme ?? lightTheme;
 
   return (
     <View style={{ gap: theme.spacing.xs }}>
