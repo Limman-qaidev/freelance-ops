@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, Text } from 'react-native';
 
-import { colors, radii, spacing, typography } from '@/ui/theme/tokens';
+import { useTheme } from '@/ui/theme/use-theme';
 
 type SelectionChipProps = {
   label: string;
@@ -15,37 +15,38 @@ export function SelectionChip({
   onPress,
   accessibilityLabel,
 }: SelectionChipProps) {
+  const { theme } = useTheme();
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ selected }}
       onPress={onPress}
-      style={[styles.base, selected && styles.selected]}
+      style={({ pressed }) => ({
+        minHeight: 44,
+        justifyContent: 'center',
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
+        borderWidth: 1,
+        borderRadius: theme.radii.lg,
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.sm,
+        backgroundColor: pressed
+          ? theme.colors.surfaceMuted
+          : selected
+            ? theme.colors.accentSoft
+            : theme.colors.surface,
+      })}
     >
-      <Text style={[styles.label, selected && styles.selectedLabel]}>{label}</Text>
+      <Text
+        style={{
+          ...theme.typography.caption,
+          fontWeight: '600',
+          color: selected ? theme.colors.accent : theme.colors.textPrimary,
+        }}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-  },
-  selected: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accent,
-  },
-  label: {
-    color: colors.textPrimary,
-    fontSize: typography.caption,
-    fontWeight: '600',
-  },
-  selectedLabel: {
-    color: colors.surface,
-  },
-});
