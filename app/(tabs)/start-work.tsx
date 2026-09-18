@@ -176,7 +176,7 @@ export default function StartWorkScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
           onPress={() => router.back()}
           style={({ pressed }) => [
             styles.backButton,
@@ -266,14 +266,14 @@ export default function StartWorkScreen() {
         <SelectionField
           label={t('startWork.taskOptional')}
           value={selectedTask?.name ?? t('common.none')}
-          accessibilityLabel="Task, optional"
+          accessibilityLabel={t('startWork.taskOptional')}
           onPress={() => setSelector('task')}
         />
 
         <SelectionField
           label={t('startWork.activityOptional')}
           value={selectedActivity?.name ?? t('common.none')}
-          accessibilityLabel="Activity, optional"
+          accessibilityLabel={t('startWork.activityOptional')}
           onPress={() => setSelector('activity')}
         />
 
@@ -297,7 +297,7 @@ export default function StartWorkScreen() {
 
         <View style={styles.actionArea}>
           <ActionButton
-            label={busy ? 'Starting…' : t('startWork.action')}
+            label={busy ? t('startWork.starting') : t('startWork.action')}
             accessibilityLabel="Start Work"
             leadingIcon="play"
             disabled={!selectedProject || busy}
