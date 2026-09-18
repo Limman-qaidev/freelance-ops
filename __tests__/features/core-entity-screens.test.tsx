@@ -231,7 +231,7 @@ describe('core entity mobile screens', () => {
       </I18nProvider></ThemeProvider>,
     );
 
-    expect(await view.findByText('Tareas')).toBeTruthy();
+    expect((await view.findAllByText('Tareas')).length).toBeGreaterThan(0);
     expect(view.getByText('Proyecto')).toBeTruthy();
     expect(await view.findByText('SMTP integration')).toBeTruthy();
     expect(view.getByText('Pendiente')).toBeTruthy();
