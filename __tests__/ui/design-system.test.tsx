@@ -6,6 +6,7 @@ import { ActiveTimerCard } from '../../src/ui/components/active-timer-card';
 import { ActionButton } from '../../src/ui/components/action-button';
 import { AppHeader } from '../../src/ui/components/app-header';
 import { EmptyState } from '../../src/ui/components/empty-state';
+import { TextField } from '../../src/ui/components/form-fields';
 import { IconButton } from '../../src/ui/components/icon-button';
 import { ProjectRow } from '../../src/ui/components/project-row';
 import { ScreenShell } from '../../src/ui/components/screen-shell';
@@ -198,6 +199,19 @@ describe('visual primitives', () => {
     expect(screen.getByText('Proyectos activos')).toBeTruthy();
     expect(screen.getByText('No hay proyectos activos')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Crear proyecto' })).toBeTruthy();
+  });
+
+  it('uses the visible TextField label as the default accessibility label', async () => {
+    const screen = await renderInTheme(
+      <TextField label="Nombre del proyecto" value="" onChangeText={jest.fn()} />,
+    );
+
+    const input = screen.getByLabelText('Nombre del proyecto');
+    expect(input).toHaveStyle({
+      minHeight: 48,
+      backgroundColor: lightTheme.colors.surface,
+      color: lightTheme.colors.textPrimary,
+    });
   });
 
   it('keeps ProjectRow display-only and accessible', async () => {
