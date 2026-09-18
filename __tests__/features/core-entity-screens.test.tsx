@@ -144,7 +144,13 @@ describe('core entity mobile screens', () => {
     );
 
     await fireEvent.press(view.getByLabelText('Open project Mailing tool'));
-    await fireEvent.press(view.getByLabelText('Add expense for Mailing tool')); 
+    expect(view.getByRole('tab', { name: 'Overview' })).toBeTruthy();
+    expect(view.getByRole('tab', { name: 'Tasks' })).toBeTruthy();
+    expect(view.getByRole('tab', { name: 'Time' })).toBeTruthy();
+    expect(view.getByRole('tab', { name: 'Expenses' })).toBeTruthy();
+    expect(view.getByRole('tab', { name: 'Economics' })).toBeTruthy();
+    await fireEvent.press(view.getByRole('tab', { name: 'Expenses' }));
+    await fireEvent.press(view.getByLabelText('Add expense for Mailing tool'));
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/expense/edit',
       params: { projectId: 'project-1' },
@@ -152,6 +158,35 @@ describe('core entity mobile screens', () => {
 
     await fireEvent.press(view.getByLabelText('Archive project Mailing tool'));
     expect(application.projectService.archive).toHaveBeenCalledWith('project-1');
+  }, 10_000);
+
+  it('renders Projects and project detail tabs fully localized in Spanish dark mode', async () => {
+    const { ProjectsManagementScreen } = jest.requireActual(
+      '../../src/features/projects/projects-management-screen',
+    ) as { ProjectsManagementScreen: React.ComponentType };
+    await AsyncStorage.setItem('freelance-ops:language', 'es');
+    const view = await render(
+      <ThemeProvider systemColorScheme="dark"><I18nProvider>
+        <ApplicationContextProvider application={makeApplication() as never}>
+          <ProjectsManagementScreen />
+        </ApplicationContextProvider>
+      </I18nProvider></ThemeProvider>,
+    );
+
+    expect(await view.findByText('Proyectos')).toBeTruthy();
+    expect(view.getByText('Clientes')).toBeTruthy();
+    expect(view.getByLabelText('Buscar proyectos')).toHaveStyle({
+      color: darkTheme.colors.textPrimary,
+      backgroundColor: darkTheme.colors.surface,
+    });
+
+    await fireEvent.press(view.getByLabelText('Abrir proyecto Mailing tool'));
+    expect(view.getByRole('tab', { name: 'Resumen' })).toBeTruthy();
+    expect(view.getByRole('tab', { name: 'Tareas' })).toBeTruthy();
+    expect(view.getByRole('tab', { name: 'Tiempo' })).toBeTruthy();
+    expect(view.getByRole('tab', { name: 'Gastos' })).toBeTruthy();
+    expect(view.getByRole('tab', { name: 'Economía' })).toBeTruthy();
+    expect(view.queryByText('Open Time history for recorded entries.')).toBeNull();
   }, 10_000);
 
   it('manages project tasks through application services', async () => {
