@@ -1,4 +1,5 @@
 import { renderRouter, screen } from 'expo-router/testing-library';
+import { Text } from 'react-native';
 
 import TabLayout from '../app/(tabs)/_layout';
 import TodayScreen from '../app/(tabs)/index';
@@ -23,7 +24,9 @@ const shellApplication = {
     listActiveProjects: jest.fn(async () => []),
     getById: jest.fn(async () => null),
   },
-  taskService: {},
+  taskService: {
+    listTasksForProject: jest.fn(async () => []),
+  },
   activityService: {},
   timeTrackingService: {
     getActiveSession: jest.fn(async () => null),
@@ -39,22 +42,37 @@ function TodayWithApplication() {
   );
 }
 
+function StartWorkStub() {
+  return <Text>Start Work form</Text>;
+}
+
 describe('application shell', () => {
-  it('renders Today and all bottom navigation destinations', async () => {
-    await renderRouter(
-      {
-        '(tabs)/_layout': TabLayout,
-        '(tabs)/index': TodayWithApplication,
-        '(tabs)/projects': ProjectsScreen,
-        '(tabs)/tasks': TasksScreen,
-        '(tabs)/planning': PlanningScreen,
-        '(tabs)/more': MoreScreen,
-      },
-      { initialUrl: '/' },
-    );
+  const routes = {
+    '(tabs)/_layout': TabLayout,
+    '(tabs)/index': TodayWithApplication,
+    '(tabs)/projects': ProjectsScreen,
+    '(tabs)/tasks': TasksScreen,
+    '(tabs)/planning': PlanningScreen,
+    '(tabs)/more': MoreScreen,
+    '(tabs)/start-work': StartWorkStub,
+  };
+
+  it('renders Today and all five primary bottom destinations', async () => {
+    await renderRouter(routes, { initialUrl: '/' });
 
     expect(screen.getByText('Active projects')).toBeTruthy();
     expect(screen.getAllByText('Today').length).toBeGreaterThan(0);
+    expect(screen.getByText('Projects')).toBeTruthy();
+    expect(screen.getByText('Tasks')).toBeTruthy();
+    expect(screen.getByText('Planning')).toBeTruthy();
+    expect(screen.getByText('More')).toBeTruthy();
+  });
+
+  it('keeps the bottom tab shell visible on the hidden Start Work route', async () => {
+    await renderRouter(routes, { initialUrl: '/start-work' });
+
+    expect(screen.getByText('Start Work form')).toBeTruthy();
+    expect(screen.getByText('Today')).toBeTruthy();
     expect(screen.getByText('Projects')).toBeTruthy();
     expect(screen.getByText('Tasks')).toBeTruthy();
     expect(screen.getByText('Planning')).toBeTruthy();

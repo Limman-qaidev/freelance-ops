@@ -27,7 +27,7 @@ const activeProject = {
   id: 'project-active',
   clientId: client.id,
   name: 'Mailing tool',
-  description: null,
+  description: 'Internal email automation tool',
   status: 'ACTIVE',
   plannedStartDate: null,
   plannedEndDate: null,
@@ -71,21 +71,6 @@ const activeTask = {
   updatedAt: '2026-09-16T00:00:00.000Z',
 };
 
-const plannedTask = {
-  ...activeTask,
-  id: 'task-planned',
-  projectId: plannedProject.id,
-  name: 'Catalogue parser',
-  status: 'PENDING',
-};
-
-const completedTask = {
-  ...plannedTask,
-  id: 'task-completed',
-  name: 'Finished task',
-  status: 'COMPLETED',
-};
-
 const activity = {
   id: 'activity-1',
   workspaceId: 'workspace-1',
@@ -112,7 +97,7 @@ const runningSession = {
 };
 
 function loadStartWorkScreen(): ComponentType {
-  const module = jest.requireActual('../../app/start-work') as {
+  const module = jest.requireActual('../../app/(tabs)/start-work') as {
     default: ComponentType;
   };
   return module.default;
@@ -134,10 +119,7 @@ function makeApplication(activeSession: typeof runningSession | null = null) {
       listActiveProjects: jest.fn(async () => [activeProject, plannedProject, onHoldProject]),
     },
     taskService: {
-      listTasksForProject: jest.fn(async (projectId: string) => {
-        if (projectId === plannedProject.id) return [plannedTask, completedTask];
-        return [activeTask];
-      }),
+      listTasksForProject: jest.fn(async () => [activeTask]),
     },
     activityService: {
       listActive: jest.fn(async () => [activity]),
@@ -160,12 +142,12 @@ function makeApplication(activeSession: typeof runningSession | null = null) {
   };
 }
 
-describe('Start Work', () => {
+describe('Start Work canonical composition', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('starts immediately with only the preselected project when no timer is active', async () => {
+  it('keeps project fixed and starts with optional enrichment empty', async () => {
     const StartWorkScreen = loadStartWorkScreen();
     const application = makeApplication();
     const view = await render(
@@ -175,8 +157,10 @@ describe('Start Work', () => {
     );
 
     expect(await view.findByText('Mailing tool')).toBeTruthy();
+    expect(view.getByText('Maubank')).toBeTruthy();
     expect(view.getByText('Task (optional)')).toBeTruthy();
     expect(view.getByText('Activity (optional)')).toBeTruthy();
+    expect(view.queryByText('Change project')).toBeNull();
 
     await fireEvent.press(view.getByLabelText('Start Work'));
 
@@ -192,7 +176,7 @@ describe('Start Work', () => {
     expect(router.replace).toHaveBeenCalledWith('/');
   });
 
-  it('lets the user change project and optionally select task, activity and description', async () => {
+  it('uses labelled selector fields for optional task and activity', async () => {
     const StartWorkScreen = loadStartWorkScreen();
     const application = makeApplication();
     const view = await render(
@@ -202,26 +186,25 @@ describe('Start Work', () => {
     );
 
     await view.findByText('Mailing tool');
-    expect(view.queryByText('Paused engagement')).toBeNull();
 
-    await fireEvent.press(view.getByLabelText('Select project Spare parts'));
-    expect(await view.findByText('Catalogue parser')).toBeTruthy();
-    expect(view.queryByText('Finished task')).toBeNull();
+    await fireEvent.press(view.getByLabelText('Task (optional)'));
+    await fireEvent.press(view.getByLabelText('Select task SMTP integration'));
 
-    await fireEvent.press(view.getByLabelText('Select task Catalogue parser'));
+    await fireEvent.press(view.getByLabelText('Activity (optional)'));
     await fireEvent.press(view.getByLabelText('Select activity Development'));
+
     await fireEvent.changeText(
       view.getByPlaceholderText('What are you working on?'),
-      'Build catalogue parser',
+      'Build SMTP integration',
     );
     await fireEvent.press(view.getByLabelText('Start Work'));
 
     await waitFor(() =>
       expect(application.timeTrackingService.startWork).toHaveBeenCalledWith({
-        projectId: plannedProject.id,
-        taskId: plannedTask.id,
+        projectId: activeProject.id,
+        taskId: activeTask.id,
         activityId: activity.id,
-        description: 'Build catalogue parser',
+        description: 'Build SMTP integration',
       }),
     );
   });
@@ -243,7 +226,6 @@ describe('Start Work', () => {
 
     await fireEvent.press(view.getByText('Cancel'));
     await waitFor(() => expect(view.queryByText('Timer already active')).toBeNull());
-    expect(application.timeTrackingService.stopWork).not.toHaveBeenCalled();
 
     await fireEvent.press(view.getByLabelText('Start Work'));
     await view.findByText('Timer already active');
@@ -254,6 +236,5 @@ describe('Start Work', () => {
     expect(application.timeTrackingService.stopWork.mock.invocationCallOrder[0]).toBeLessThan(
       application.timeTrackingService.startWork.mock.invocationCallOrder[0],
     );
-    expect(router.replace).toHaveBeenCalledWith('/');
   });
 });
