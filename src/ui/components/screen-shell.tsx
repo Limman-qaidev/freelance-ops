@@ -19,23 +19,39 @@ export function ScreenShell({ title, subtitle, children }: ScreenShellProps) {
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: theme.colors.background }}
     >
-      <View style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md }}>
-        <Text style={{ ...theme.typography.title, color: theme.colors.textPrimary }}>{title}</Text>
-        {subtitle ? (
-          <Text
-            style={{
-              ...theme.typography.body,
-              color: theme.colors.textSecondary,
-              marginTop: theme.spacing.xs,
-              marginBottom: theme.spacing.lg,
-            }}
-          >
-            {subtitle}
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: theme.spacing.lg,
+          paddingTop: theme.spacing.sm,
+          paddingBottom: theme.spacing.md,
+        }}
+      >
+        <View
+          testID="screen-shell-header"
+          style={{
+            minHeight: 52,
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ ...theme.typography.title, color: theme.colors.textPrimary }}>
+            {title}
           </Text>
-        ) : (
-          <View style={{ height: theme.spacing.lg }} />
-        )}
-        {children}
+          {subtitle ? (
+            <Text
+              style={{
+                ...theme.typography.caption,
+                color: theme.colors.textSecondary,
+                marginTop: 2,
+              }}
+            >
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+        <View testID="screen-shell-content" style={{ flex: 1, marginTop: theme.spacing.md }}>
+          {children}
+        </View>
       </View>
     </SafeAreaView>
   );
