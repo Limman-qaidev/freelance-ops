@@ -1,9 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import type { ComponentType } from 'react';
 
+import { I18nProvider } from '../../src/i18n/i18n-provider';
 import { ApplicationContextProvider } from '../../src/providers/application-context';
 import { ThemeProvider } from '../../src/ui/theme/theme-provider';
+
+jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'es' }] }));
 
 jest.mock('expo-router', () => ({
   router: {
@@ -228,6 +232,28 @@ describe('Start Work', () => {
         description: 'Build catalogue parser',
       }),
     );
+  });
+
+  it('uses fully localized Spanish copy for optional fields and timer conflict', async () => {
+    await AsyncStorage.setItem('freelance-ops:language', 'es');
+    const StartWorkScreen = loadStartWorkScreen();
+    const application = makeApplication(runningSession);
+    const view = await render(
+      <ThemeProvider systemColorScheme="dark"><I18nProvider><ApplicationContextProvider application={application as never}>
+        <StartWorkScreen />
+      </ApplicationContextProvider></I18nProvider></ThemeProvider>,
+    );
+
+    expect(await view.findByText('Iniciar trabajo')).toBeTruthy();
+    expect(view.getByText('Tarea · opcional')).toBeTruthy();
+    expect(view.getByText('Actividad · opcional')).toBeTruthy();
+    expect(view.getByText('Descripción · opcional')).toBeTruthy();
+    expect(view.getByLabelText('Cambiar proyecto')).toBeTruthy();
+
+    await fireEvent.press(view.getByLabelText('Iniciar trabajo'));
+    expect(await view.findByText('Ya hay un temporizador activo')).toBeTruthy();
+    expect(view.getByText('Detener actual e iniciar seleccionado')).toBeTruthy();
+    expect(view.getByText('Cancelar')).toBeTruthy();
   });
 
   it('requires an explicit stop-current decision when another timer is active', async () => {
