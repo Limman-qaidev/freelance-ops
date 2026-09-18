@@ -1,7 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
+import { I18nProvider } from '../../src/i18n/i18n-provider';
 import { ApplicationContextProvider } from '../../src/providers/application-context';
+import { darkTheme } from '../../src/ui/theme/theme';
+import { ThemeProvider } from '../../src/ui/theme/theme-provider';
+
+jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'es' }] }));
 
 let mockParams: { id?: string; projectId?: string } = { projectId: 'project-1' };
 
@@ -96,8 +102,10 @@ function makeApplication() {
 }
 
 describe('expense editor', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockParams = { projectId: 'project-1' };
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem('freelance-ops:language', 'es');
     jest.clearAllMocks();
   });
 
@@ -105,25 +113,27 @@ describe('expense editor', () => {
     const ExpenseEditor = loadEditor();
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="dark"><I18nProvider><ApplicationContextProvider application={application as never}>
         <ExpenseEditor />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></I18nProvider></ThemeProvider>,
     );
 
+    expect(await view.findByText('Nuevo gasto')).toBeTruthy();
     expect(await view.findByText('Mailing tool')).toBeTruthy();
-    await fireEvent.changeText(view.getByLabelText('Expense date'), '2026-09-17');
-    await fireEvent.changeText(view.getByLabelText('Expense category'), 'Travel');
-    await fireEvent.changeText(view.getByLabelText('Expense amount'), '12.34');
-    await fireEvent.changeText(view.getByLabelText('Expense currency'), 'USD');
-    await fireEvent.changeText(view.getByLabelText('Exchange rate'), '0.9');
-    await fireEvent.changeText(view.getByLabelText('Expense description'), 'Synthetic taxi');
-    await fireEvent.press(view.getByLabelText('Set reimbursable'));
-    await fireEvent.press(view.getByLabelText('Attach receipt'));
+    expect(view.getByLabelText('Importe del gasto')).toHaveStyle({ backgroundColor: darkTheme.colors.surface, color: darkTheme.colors.textPrimary, minHeight: 48 });
+    await fireEvent.changeText(view.getByLabelText('Fecha del gasto'), '2026-09-17');
+    await fireEvent.changeText(view.getByLabelText('Categoría del gasto'), 'Travel');
+    await fireEvent.changeText(view.getByLabelText('Importe del gasto'), '12.34');
+    await fireEvent.changeText(view.getByLabelText('Moneda del gasto'), 'USD');
+    await fireEvent.changeText(view.getByLabelText('Tipo de cambio'), '0.9');
+    await fireEvent.changeText(view.getByLabelText('Descripción del gasto'), 'Synthetic taxi');
+    await fireEvent.press(view.getByLabelText('Marcar como reembolsable'));
+    await fireEvent.press(view.getByLabelText('Adjuntar recibo'));
 
     expect(await view.findByText('receipt.pdf')).toBeTruthy();
-    expect(view.getByText('Project amount: 11.11 EUR')).toBeTruthy();
+    expect(view.getByText('Importe del proyecto: 11.11 EUR')).toBeTruthy();
 
-    await fireEvent.press(view.getByLabelText('Save expense'));
+    await fireEvent.press(view.getByLabelText('Guardar gasto'));
 
     await waitFor(() => expect(application.expenseService.create).toHaveBeenCalledTimes(1));
     expect(application.expenseService.create).toHaveBeenCalledWith(
@@ -148,18 +158,18 @@ describe('expense editor', () => {
     const ExpenseEditor = loadEditor();
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="dark"><I18nProvider><ApplicationContextProvider application={application as never}>
         <ExpenseEditor />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></I18nProvider></ThemeProvider>,
     );
 
     expect(await view.findByText('receipt.pdf')).toBeTruthy();
-    expect(view.getByLabelText('Expense amount').props.value).toBe('12.34');
-    expect(view.getByLabelText('Expense currency').props.value).toBe('USD');
-    expect(view.getByLabelText('Exchange rate').props.value).toBe('0.9');
+    expect(view.getByLabelText('Importe del gasto').props.value).toBe('12.34');
+    expect(view.getByLabelText('Moneda del gasto').props.value).toBe('USD');
+    expect(view.getByLabelText('Tipo de cambio').props.value).toBe('0.9');
 
-    await fireEvent.changeText(view.getByLabelText('Expense description'), 'Corrected taxi');
-    await fireEvent.press(view.getByLabelText('Save expense'));
+    await fireEvent.changeText(view.getByLabelText('Descripción del gasto'), 'Corrected taxi');
+    await fireEvent.press(view.getByLabelText('Guardar gasto'));
 
     await waitFor(() => expect(application.expenseService.update).toHaveBeenCalledTimes(1));
     expect(application.expenseService.update).toHaveBeenCalledWith(

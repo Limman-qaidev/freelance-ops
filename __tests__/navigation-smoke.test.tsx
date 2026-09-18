@@ -1,60 +1,37 @@
 import { renderRouter, screen } from 'expo-router/testing-library';
+import { Text } from 'react-native';
 
 import TabLayout from '../app/(tabs)/_layout';
-import TodayScreen from '../app/(tabs)/index';
-import MoreScreen from '../app/(tabs)/more';
-import PlanningScreen from '../app/(tabs)/planning';
-import ProjectsScreen from '../app/(tabs)/projects';
-import TasksScreen from '../app/(tabs)/tasks';
-import { ApplicationContextProvider } from '../src/providers/application-context';
+import { ThemeProvider } from '../src/ui/theme/theme-provider';
 
-const shellApplication = {
-  workspace: {
-    id: 'workspace-shell',
-    name: 'Freelance Ops',
-    defaultCurrency: 'EUR',
-    createdAt: '2026-09-16T00:00:00.000Z',
-    updatedAt: '2026-09-16T00:00:00.000Z',
-  },
-  clientService: {
-    getById: jest.fn(async () => null),
-  },
-  projectService: {
-    listActiveProjects: jest.fn(async () => []),
-    getById: jest.fn(async () => null),
-  },
-  taskService: {},
-  activityService: {},
-  timeTrackingService: {
-    getActiveSession: jest.fn(async () => null),
-    getElapsedDuration: jest.fn(async () => 0),
-  },
-};
-
-function TodayWithApplication() {
+function TabLayoutWithTheme() {
   return (
-    <ApplicationContextProvider application={shellApplication as never}>
-      <TodayScreen />
-    </ApplicationContextProvider>
+    <ThemeProvider systemColorScheme="light">
+      <TabLayout />
+    </ThemeProvider>
   );
 }
 
+function RouteProbe({ label }: { label: string }) {
+  return <Text>{label}</Text>;
+}
+
 describe('application shell', () => {
-  it('renders Today and all bottom navigation destinations', async () => {
+  it('renders the exact five primary bottom navigation destinations', async () => {
     await renderRouter(
       {
-        '(tabs)/_layout': TabLayout,
-        '(tabs)/index': TodayWithApplication,
-        '(tabs)/projects': ProjectsScreen,
-        '(tabs)/tasks': TasksScreen,
-        '(tabs)/planning': PlanningScreen,
-        '(tabs)/more': MoreScreen,
+        '(tabs)/_layout': TabLayoutWithTheme,
+        '(tabs)/index': () => <RouteProbe label="Today route" />,
+        '(tabs)/projects': () => <RouteProbe label="Projects route" />,
+        '(tabs)/tasks': () => <RouteProbe label="Tasks route" />,
+        '(tabs)/planning': () => <RouteProbe label="Planning route" />,
+        '(tabs)/more': () => <RouteProbe label="More route" />,
       },
       { initialUrl: '/' },
     );
 
-    expect(screen.getByText('Active projects')).toBeTruthy();
-    expect(screen.getAllByText('Today').length).toBeGreaterThan(0);
+    expect(screen.getByText('Today route')).toBeTruthy();
+    expect(screen.getByText('Today')).toBeTruthy();
     expect(screen.getByText('Projects')).toBeTruthy();
     expect(screen.getByText('Tasks')).toBeTruthy();
     expect(screen.getByText('Planning')).toBeTruthy();

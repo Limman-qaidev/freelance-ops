@@ -1,8 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import TodayScreen from '../../app/(tabs)/index';
+import { I18nProvider } from '../../src/i18n/i18n-provider';
 import { ApplicationContextProvider } from '../../src/providers/application-context';
+import { ThemeProvider } from '../../src/ui/theme/theme-provider';
+
+jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'es' }] }));
 
 jest.mock('expo-router', () => ({
   router: {
@@ -141,9 +146,9 @@ describe('Today', () => {
   it('lists trackable projects and exposes work and expense quick actions', async () => {
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <TodayScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
     expect(await view.findByText('Mailing tool')).toBeTruthy();
@@ -158,22 +163,41 @@ describe('Today', () => {
       params: { projectId: activeProject.id },
     });
 
-    await fireEvent.press(view.getByLabelText('Open expenses from Today'));
-    expect(router.push).toHaveBeenCalledWith('/expenses');
 
-    await fireEvent.press(view.getByLabelText('Add expense from Today'));
+    await fireEvent.press(view.getByLabelText('Add expense'));
     expect(router.push).toHaveBeenCalledWith('/expense/edit');
+  });
+
+  it('localizes project metadata, quick actions and work accessibility in Spanish', async () => {
+    await AsyncStorage.setItem('freelance-ops:language', 'es');
+    const application = makeApplication();
+    const view = await render(
+      <ThemeProvider systemColorScheme="dark"><I18nProvider><ApplicationContextProvider application={application as never}>
+        <TodayScreen />
+      </ApplicationContextProvider></I18nProvider></ThemeProvider>,
+    );
+
+    expect(await view.findByText('Proyectos activos')).toBeTruthy();
+    expect(view.getByText('Acciones rápidas')).toBeTruthy();
+    expect(view.getByText(/Activo · Vence 2026-10-01/)).toBeTruthy();
+    expect(view.getByText(/Planificado · Vence 2026-10-01/)).toBeTruthy();
+    await fireEvent.press(view.getByLabelText('Iniciar trabajo en Mailing tool'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/start-work',
+      params: { projectId: activeProject.id },
+    });
+    expect(view.getByLabelText('Registrar gasto')).toBeTruthy();
   });
 
   it('recovers the persisted active session and exposes pause, resume and stop controls', async () => {
     const application = makeApplication(runningSession);
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <TodayScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
-    expect(await view.findByText('Active session')).toBeTruthy();
+    expect(await view.findByText('Running')).toBeTruthy();
     expect(view.getByText('00:01:30')).toBeTruthy();
     expect(view.getByText('Pause')).toBeTruthy();
     expect(view.getByText('Stop')).toBeTruthy();

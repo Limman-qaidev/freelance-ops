@@ -6,8 +6,10 @@ import { ActiveTimerCard } from '../../src/ui/components/active-timer-card';
 import { ActionButton } from '../../src/ui/components/action-button';
 import { AppHeader } from '../../src/ui/components/app-header';
 import { EmptyState } from '../../src/ui/components/empty-state';
+import { TextField } from '../../src/ui/components/form-fields';
 import { IconButton } from '../../src/ui/components/icon-button';
 import { ProjectRow } from '../../src/ui/components/project-row';
+import { ScreenShell } from '../../src/ui/components/screen-shell';
 import { SectionHeader } from '../../src/ui/components/section-header';
 import { darkTheme, lightTheme, resolveThemeMode } from '../../src/ui/theme/theme';
 import { ThemeProvider } from '../../src/ui/theme/theme-provider';
@@ -142,6 +144,10 @@ describe('theme contract', () => {
 });
 
 describe('visual primitives', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
   function renderInTheme(node: React.ReactNode) {
     return render(<ThemeProvider systemColorScheme="light">{node}</ThemeProvider>);
   }
@@ -171,6 +177,19 @@ describe('visual primitives', () => {
     expect(onPress).not.toHaveBeenCalled();
   });
 
+  it('uses the compact app header inside ScreenShell instead of document-style title spacing', async () => {
+    const screen = await renderInTheme(
+      <ScreenShell title="Proyectos" subtitle="Cliente y contexto del proyecto">
+        <Text>Contenido</Text>
+      </ScreenShell>,
+    );
+
+    expect(screen.getByTestId('screen-shell-header')).toBeTruthy();
+    expect(screen.getByText('Proyectos')).toHaveStyle(lightTheme.typography.title);
+    expect(screen.getByText('Cliente y contexto del proyecto')).toHaveStyle(lightTheme.typography.caption);
+    expect(screen.getByTestId('screen-shell-content')).toHaveStyle({ marginTop: lightTheme.spacing.md });
+  });
+
   it('renders caller-provided translated text in structural primitives', async () => {
     const screen = await renderInTheme(
       <View>
@@ -184,6 +203,19 @@ describe('visual primitives', () => {
     expect(screen.getByText('Proyectos activos')).toBeTruthy();
     expect(screen.getByText('No hay proyectos activos')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Crear proyecto' })).toBeTruthy();
+  });
+
+  it('uses the visible TextField label as the default accessibility label', async () => {
+    const screen = await renderInTheme(
+      <TextField label="Nombre del proyecto" value="" onChangeText={jest.fn()} />,
+    );
+
+    const input = screen.getByLabelText('Nombre del proyecto');
+    expect(input).toHaveStyle({
+      minHeight: 48,
+      backgroundColor: lightTheme.colors.surface,
+      color: lightTheme.colors.textPrimary,
+    });
   });
 
   it('keeps ProjectRow display-only and accessible', async () => {

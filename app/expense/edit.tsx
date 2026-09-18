@@ -1,29 +1,43 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { calculateExpenseAmounts } from '@/application/expenses/expense-money';
 import type { PreparedExpenseAttachment } from '@/domain/expenses/expense';
 import type { Project } from '@/domain/projects/project';
+import { useI18n } from '@/i18n/use-i18n';
 import { useApplication } from '@/providers/application-context';
+import { ActionButton } from '@/ui/components/action-button';
+import { TextField } from '@/ui/components/form-fields';
 import { ScreenShell } from '@/ui/components/screen-shell';
-import { colors, radii, spacing, typography } from '@/ui/theme/tokens';
+import { SectionHeader } from '@/ui/components/section-header';
+import { SelectionChip } from '@/ui/components/selection-chip';
+import { useTheme } from '@/ui/theme/use-theme';
+
+const minorDigits = (currency: string) =>
+  ['JPY', 'KRW', 'VND'].includes(currency.toUpperCase()) ? 0 : 2;
+
+const formatMinor = (value: number, currency: string) =>
+  (value / 10 ** minorDigits(currency)).toFixed(minorDigits(currency));
 
 export default function ExpenseEditorScreen() {
   const params = useLocalSearchParams<{ id?: string; projectId?: string }>();
   const { expenseService, projectService } = useApplication();
+  const { t } = useI18n();
+  const { theme } = useTheme();
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState(params.projectId ?? '');
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
-  const [originalAmount, setOriginalAmount] = useState('');
-  const [originalCurrency, setOriginalCurrency] = useState('EUR');
-  const [exchangeRateDecimal, setExchangeRateDecimal] = useState('');
+  const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('EUR');
+  const [fx, setFx] = useState('');
   const [reimbursable, setReimbursable] = useState(false);
   const [billable, setBillable] = useState(false);
-  const [existingAttachmentNames, setExistingAttachmentNames] = useState<string[]>([]);
-  const [preparedReceipts, setPreparedReceipts] = useState<PreparedExpenseAttachment[]>([]);
+  const [existing, setExisting] = useState<string[]>([]);
+  const [receipts, setReceipts] = useState<PreparedExpenseAttachment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -31,18 +45,18 @@ export default function ExpenseEditorScreen() {
     let mounted = true;
     void projectService
       .listActiveProjects()
-      .then((nextProjects) => {
+      .then((items) => {
         if (!mounted) return;
-        setProjects(nextProjects);
-        if (!projectId && nextProjects[0]) setProjectId(nextProjects[0].id);
+        setProjects(items);
+        if (!projectId && items[0]) setProjectId(items[0].id);
       })
       .catch(() => {
-        if (mounted) setError('Unable to load projects.');
+        if (mounted) setError(t('expenseEditor.loadProjectsError'));
       });
     return () => {
       mounted = false;
     };
-  }, [projectId, projectService]);
+  }, [projectId, projectService, t]);
 
   useEffect(() => {
     if (!params.id) return;
@@ -51,199 +65,287 @@ export default function ExpenseEditorScreen() {
       .getById(params.id)
       .then((record) => {
         if (!mounted || !record) return;
-        const expense = record.expense;
-        setProjectId(expense.projectId);
-        setExpenseDate(expense.expenseDate);
-        setCategory(expense.category);
-        setDescription(expense.description ?? '');
-        setOriginalAmount(formatMinor(expense.originalAmountMinor));
-        setOriginalCurrency(expense.originalCurrency);
-        setExchangeRateDecimal(expense.exchangeRateDecimal === '1' ? '' : expense.exchangeRateDecimal);
-        setReimbursable(expense.reimbursable);
-        setBillable(expense.billable ?? false);
-        setExistingAttachmentNames(record.attachments.map((attachment) => attachment.originalFilename));
+        const item = record.expense;
+        setProjectId(item.projectId);
+        setDate(item.expenseDate);
+        setCategory(item.category);
+        setDescription(item.description ?? '');
+        setAmount(formatMinor(item.originalAmountMinor, item.originalCurrency));
+        setCurrency(item.originalCurrency);
+        setFx(item.exchangeRateDecimal === '1' ? '' : item.exchangeRateDecimal);
+        setReimbursable(item.reimbursable);
+        setBillable(item.billable ?? false);
+        setExisting(record.attachments.map((attachment) => attachment.originalFilename));
       })
       .catch(() => {
-        if (mounted) setError('Unable to load this expense.');
+        if (mounted) setError(t('expenseEditor.loadExpenseError'));
       });
     return () => {
       mounted = false;
     };
-  }, [expenseService, params.id]);
+  }, [expenseService, params.id, t]);
 
-  const selectedProject = projects.find((project) => project.id === projectId) ?? null;
+  const project = projects.find((item) => item.id === projectId);
   const preview = useMemo(() => {
-    if (!selectedProject || !originalAmount.trim() || !originalCurrency.trim()) return null;
+    if (!project || !amount.trim() || !currency.trim()) return null;
     try {
       return calculateExpenseAmounts({
-        originalAmount,
-        originalCurrency,
-        projectCurrency: selectedProject.projectCurrency,
-        exchangeRateDecimal: exchangeRateDecimal.trim() || null,
+        originalAmount: amount.replace(',', '.'),
+        originalCurrency: currency,
+        projectCurrency: project.projectCurrency,
+        exchangeRateDecimal: fx.trim().replace(',', '.') || null,
       });
     } catch {
       return null;
     }
-  }, [exchangeRateDecimal, originalAmount, originalCurrency, selectedProject]);
+  }, [amount, currency, fx, project]);
 
-  async function attachReceipt() {
+  async function attach() {
     setError(null);
     try {
       const receipt = await expenseService.prepareReceipt();
-      if (receipt) setPreparedReceipts((current) => [...current, receipt]);
+      if (receipt) setReceipts((current) => [...current, receipt]);
     } catch {
-      setError('Unable to attach that receipt.');
+      setError(t('expenseEditor.attachError'));
     }
+  }
+
+  async function removeReceipt(receipt: PreparedExpenseAttachment) {
+    await expenseService.discardPreparedReceipt(receipt).catch(() => undefined);
+    setReceipts((items) => items.filter((item) => item.id !== receipt.id));
   }
 
   async function save() {
     if (!projectId) {
-      setError('Choose a project before saving.');
+      setError(t('expenseEditor.projectRequired'));
       return;
     }
     setSaving(true);
     setError(null);
     const input = {
       projectId,
-      expenseDate,
+      expenseDate: date,
       category,
       description,
-      originalAmount,
-      originalCurrency,
-      exchangeRateDecimal: exchangeRateDecimal.trim() || null,
+      originalAmount: amount.replace(',', '.'),
+      originalCurrency: currency,
+      exchangeRateDecimal: fx.trim() ? fx.replace(',', '.') : null,
       reimbursable,
       billable,
     };
     try {
       if (params.id) {
         await expenseService.update(params.id, input);
-        for (const receipt of preparedReceipts) {
+        for (const receipt of receipts) {
           await expenseService.addPreparedReceipt(params.id, receipt);
         }
       } else {
-        const receiptArgument =
-          preparedReceipts.length === 0
-            ? undefined
-            : preparedReceipts.length === 1
-              ? preparedReceipts[0]
-              : preparedReceipts;
-        await expenseService.create(input, receiptArgument);
+        await expenseService.create(
+          input,
+          receipts.length === 0 ? undefined : receipts.length === 1 ? receipts[0] : receipts,
+        );
       }
-      setPreparedReceipts([]);
       router.replace('/expenses' as never);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to save expense.');
+      setError(caught instanceof Error ? caught.message : t('expenseEditor.saveError'));
     } finally {
       setSaving(false);
     }
   }
 
-  async function removeUnsavedReceipt(receipt: PreparedExpenseAttachment) {
-    await expenseService.discardPreparedReceipt(receipt).catch(() => undefined);
-    setPreparedReceipts((current) => current.filter((item) => item.id !== receipt.id));
-  }
-
   return (
     <ScreenShell
-      title={params.id ? 'Edit expense' : 'New expense'}
-      subtitle="Capture the cost locally and keep receipts with the project record."
+      title={params.id ? t('expenseEditor.editTitle') : t('expenseEditor.newTitle')}
+      subtitle={t('expenseEditor.subtitle')}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ScrollView
+        contentContainerStyle={{ gap: theme.spacing.md, paddingBottom: theme.spacing.xxl }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {error ? (
+          <Text accessibilityRole="alert" style={{ ...theme.typography.caption, color: theme.colors.error }}>
+            {error}
+          </Text>
+        ) : null}
 
-        <Text style={styles.label}>Project</Text>
-        <View style={styles.chips}>
-          {projects.map((project) => (
-            <Pressable
-              key={project.id}
-              style={[styles.chip, project.id === projectId && styles.chipSelected]}
-              onPress={() => setProjectId(project.id)}
-            >
-              <Text style={[styles.chipText, project.id === projectId && styles.chipTextSelected]}>
-                {project.name}
-              </Text>
-            </Pressable>
-          ))}
+        <SectionHeader title={t('expenseEditor.details')} />
+
+        <View style={{ gap: theme.spacing.sm }}>
+          <Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>
+            {t('expenseEditor.project')}
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {projects.map((item) => (
+              <SelectionChip
+                key={item.id}
+                label={item.name}
+                selected={projectId === item.id}
+                accessibilityLabel={`${t('expenseEditor.selectProject')} ${item.name}`}
+                onPress={() => setProjectId(item.id)}
+              />
+            ))}
+          </View>
         </View>
 
-        <TextInput accessibilityLabel="Expense date" style={styles.input} value={expenseDate} onChangeText={setExpenseDate} placeholder="YYYY-MM-DD" />
-        <TextInput accessibilityLabel="Expense category" style={styles.input} value={category} onChangeText={setCategory} placeholder="Category" />
-        <TextInput accessibilityLabel="Expense amount" style={styles.input} value={originalAmount} onChangeText={setOriginalAmount} placeholder="Amount" keyboardType="decimal-pad" />
-        <TextInput accessibilityLabel="Expense currency" style={styles.input} value={originalCurrency} onChangeText={(value) => setOriginalCurrency(value.toUpperCase())} placeholder="Currency" autoCapitalize="characters" />
-        {selectedProject && originalCurrency.trim().toUpperCase() !== selectedProject.projectCurrency ? (
-          <TextInput accessibilityLabel="Exchange rate" style={styles.input} value={exchangeRateDecimal} onChangeText={setExchangeRateDecimal} placeholder={`1 ${originalCurrency || 'CUR'} = ? ${selectedProject.projectCurrency}`} keyboardType="decimal-pad" />
+        <TextField
+          label={t('expenseEditor.date')}
+          accessibilityLabel={t('expenseEditor.dateA11y')}
+          helperText="YYYY-MM-DD"
+          value={date}
+          onChangeText={setDate}
+          autoCapitalize="none"
+        />
+
+        <TextField
+          label={t('expenseEditor.category')}
+          accessibilityLabel={t('expenseEditor.categoryA11y')}
+          value={category}
+          onChangeText={setCategory}
+        />
+
+        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+          <View style={{ flex: 1 }}>
+            <TextField
+              label={t('expenseEditor.amount')}
+              accessibilityLabel={t('expenseEditor.amountA11y')}
+              keyboardType="decimal-pad"
+              value={amount}
+              onChangeText={setAmount}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <TextField
+              label={t('expenseEditor.currency')}
+              accessibilityLabel={t('expenseEditor.currencyA11y')}
+              autoCapitalize="characters"
+              value={currency}
+              onChangeText={(value) => setCurrency(value.toUpperCase())}
+            />
+          </View>
+        </View>
+
+        {project && currency.trim().toUpperCase() !== project.projectCurrency ? (
+          <TextField
+            label={t('expenseEditor.exchangeRate')}
+            accessibilityLabel={t('expenseEditor.exchangeRate')}
+            helperText={`1 ${currency || 'CUR'} = ? ${project.projectCurrency}`}
+            keyboardType="decimal-pad"
+            value={fx}
+            onChangeText={setFx}
+          />
         ) : null}
-        <TextInput accessibilityLabel="Expense description" style={styles.input} value={description} onChangeText={setDescription} placeholder="Description (optional)" multiline />
+
+        <TextField
+          label={t('expenseEditor.descriptionOptional')}
+          accessibilityLabel={t('expenseEditor.descriptionA11y')}
+          multiline
+          value={description}
+          onChangeText={setDescription}
+        />
 
         {preview ? (
-          <View style={styles.preview}>
-            <Text style={styles.previewText}>
-              Project amount: {formatMinor(preview.projectAmountMinor)} {preview.projectCurrency}
+          <View
+            style={{
+              padding: theme.spacing.md,
+              borderRadius: theme.radii.md,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              backgroundColor: theme.colors.accentSoft,
+            }}
+          >
+            <Text style={{ ...theme.typography.bodyStrong, color: theme.colors.textPrimary }}>
+              {t('expenseEditor.projectAmount')}: {formatMinor(preview.projectAmountMinor, preview.projectCurrency)} {preview.projectCurrency}
             </Text>
           </View>
         ) : null}
 
-        <View style={styles.toggleRow}>
-          <Pressable accessibilityLabel="Set reimbursable" style={[styles.toggle, reimbursable && styles.toggleSelected]} onPress={() => setReimbursable((value) => !value)}>
-            <Text style={[styles.toggleText, reimbursable && styles.toggleTextSelected]}>{reimbursable ? 'Reimbursable' : 'Not reimbursable'}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityLabel={t('expenseEditor.markReimbursable')}
+            accessibilityState={{ checked: reimbursable }}
+            onPress={() => setReimbursable((value) => !value)}
+            style={({ pressed }) => ({
+              minHeight: 48,
+              paddingHorizontal: theme.spacing.md,
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: reimbursable ? theme.colors.accent : theme.colors.border,
+              borderRadius: theme.radii.md,
+              backgroundColor: pressed
+                ? theme.colors.surfaceMuted
+                : reimbursable
+                  ? theme.colors.accentSoft
+                  : theme.colors.surface,
+            })}
+          >
+            <Text style={{ ...theme.typography.caption, color: theme.colors.textPrimary }}>
+              {reimbursable ? t('expenses.reimbursable') : t('expenses.notReimbursable')}
+            </Text>
           </Pressable>
-          <Pressable accessibilityLabel="Set billable" style={[styles.toggle, billable && styles.toggleSelected]} onPress={() => setBillable((value) => !value)}>
-            <Text style={[styles.toggleText, billable && styles.toggleTextSelected]}>{billable ? 'Billable' : 'Non-billable'}</Text>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityLabel={t('expenseEditor.markBillable')}
+            accessibilityState={{ checked: billable }}
+            onPress={() => setBillable((value) => !value)}
+            style={({ pressed }) => ({
+              minHeight: 48,
+              paddingHorizontal: theme.spacing.md,
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: billable ? theme.colors.accent : theme.colors.border,
+              borderRadius: theme.radii.md,
+              backgroundColor: pressed
+                ? theme.colors.surfaceMuted
+                : billable
+                  ? theme.colors.accentSoft
+                  : theme.colors.surface,
+            })}
+          >
+            <Text style={{ ...theme.typography.caption, color: theme.colors.textPrimary }}>
+              {billable ? t('common.billable') : t('common.nonBillable')}
+            </Text>
           </Pressable>
         </View>
 
-        <Pressable accessibilityLabel="Attach receipt" style={styles.secondaryButton} onPress={() => void attachReceipt()}>
-          <Text style={styles.secondaryText}>Attach receipt / document</Text>
-        </Pressable>
+        <ActionButton
+          label={t('expenseEditor.attach')}
+          accessibilityLabel={t('expenseEditor.attach')}
+          variant="secondary"
+          onPress={() => void attach()}
+        />
 
-        {[...existingAttachmentNames, ...preparedReceipts.map((receipt) => receipt.originalFilename)].map((name, index) => (
-          <Text key={`${name}-${index}`} style={styles.attachmentName}>{name}</Text>
+        {[...existing, ...receipts.map((receipt) => receipt.originalFilename)].map((name, index) => (
+          <Text
+            key={`${name}-${index}`}
+            style={{ ...theme.typography.caption, color: theme.colors.textPrimary }}
+          >
+            {name}
+          </Text>
         ))}
-        {preparedReceipts.map((receipt) => (
-          <Pressable key={`remove-${receipt.id}`} onPress={() => void removeUnsavedReceipt(receipt)}>
-            <Text style={styles.removeText}>Remove {receipt.originalFilename}</Text>
+
+        {receipts.map((receipt) => (
+          <Pressable
+            key={receipt.id}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('expenseEditor.remove')} ${receipt.originalFilename}`}
+            onPress={() => void removeReceipt(receipt)}
+            style={{ minHeight: 44, justifyContent: 'center' }}
+          >
+            <Text style={{ ...theme.typography.caption, color: theme.colors.error }}>
+              {t('expenseEditor.remove')} {receipt.originalFilename}
+            </Text>
           </Pressable>
         ))}
 
-        <View style={styles.actions}>
-          <Pressable accessibilityLabel="Save expense" disabled={saving} style={styles.primaryButton} onPress={() => void save()}>
-            <Text style={styles.primaryText}>{saving ? 'Saving…' : 'Save expense'}</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={() => router.back()}>
-            <Text style={styles.secondaryText}>Cancel</Text>
-          </Pressable>
-        </View>
+        <ActionButton
+          label={saving ? t('expenseEditor.saving') : t('expenseEditor.save')}
+          accessibilityLabel={t('expenseEditor.save')}
+          disabled={saving}
+          onPress={() => void save()}
+        />
+        <ActionButton label={t('more.cancel')} variant="secondary" onPress={() => router.back()} />
       </ScrollView>
     </ScreenShell>
   );
 }
-
-function formatMinor(value: number): string {
-  return (value / 100).toFixed(2);
-}
-
-const styles = StyleSheet.create({
-  content: { gap: spacing.sm, paddingBottom: spacing.xl },
-  label: { color: colors.textMuted, fontSize: typography.caption, fontWeight: '600' },
-  input: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radii.md, color: colors.textPrimary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: typography.body },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: { borderColor: colors.border, borderWidth: 1, borderRadius: radii.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.surface },
-  chipSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { color: colors.textPrimary, fontSize: typography.caption },
-  chipTextSelected: { color: colors.surface, fontWeight: '700' },
-  preview: { backgroundColor: '#EFF6FF', borderRadius: radii.md, padding: spacing.md },
-  previewText: { color: colors.textPrimary, fontSize: typography.body, fontWeight: '700' },
-  toggleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  toggle: { borderColor: colors.border, borderWidth: 1, borderRadius: radii.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.surface },
-  toggleSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
-  toggleText: { color: colors.textPrimary, fontSize: typography.caption },
-  toggleTextSelected: { color: colors.surface, fontWeight: '700' },
-  attachmentName: { color: colors.textPrimary, fontSize: typography.caption },
-  removeText: { color: '#B91C1C', fontSize: typography.caption, fontWeight: '600' },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
-  primaryButton: { backgroundColor: colors.accent, borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  primaryText: { color: colors.surface, fontWeight: '700' },
-  secondaryButton: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  secondaryText: { color: colors.textPrimary, fontWeight: '600' },
-  error: { color: '#B91C1C', fontSize: typography.caption, fontWeight: '600' },
-});

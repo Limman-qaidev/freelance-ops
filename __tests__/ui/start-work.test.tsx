@@ -1,8 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import type { ComponentType } from 'react';
 
+import { I18nProvider } from '../../src/i18n/i18n-provider';
 import { ApplicationContextProvider } from '../../src/providers/application-context';
+import { ThemeProvider } from '../../src/ui/theme/theme-provider';
+
+jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'es' }] }));
 
 jest.mock('expo-router', () => ({
   router: {
@@ -169,9 +174,9 @@ describe('Start Work', () => {
     const StartWorkScreen = loadStartWorkScreen();
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <StartWorkScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
     expect(await view.findByText('Mailing tool')).toBeTruthy();
@@ -196,22 +201,25 @@ describe('Start Work', () => {
     const StartWorkScreen = loadStartWorkScreen();
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <StartWorkScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
     await view.findByText('Mailing tool');
     expect(view.queryByText('Paused engagement')).toBeNull();
 
-    await fireEvent.press(view.getByLabelText('Select project Spare parts'));
+    await fireEvent.press(view.getByLabelText('Change project'));
+    await fireEvent.press(view.getByText('Spare parts')); 
+    await fireEvent.press(view.getByLabelText('Task'));
     expect(await view.findByText('Catalogue parser')).toBeTruthy();
     expect(view.queryByText('Finished task')).toBeNull();
 
-    await fireEvent.press(view.getByLabelText('Select task Catalogue parser'));
-    await fireEvent.press(view.getByLabelText('Select activity Development'));
+    await fireEvent.press(view.getByText('Catalogue parser'));
+    await fireEvent.press(view.getByLabelText('Activity'));
+    await fireEvent.press(view.getByText('Development'));
     await fireEvent.changeText(
-      view.getByPlaceholderText('What are you working on?'),
+      view.getByLabelText('Description'),
       'Build catalogue parser',
     );
     await fireEvent.press(view.getByLabelText('Start Work'));
@@ -226,13 +234,35 @@ describe('Start Work', () => {
     );
   });
 
+  it('uses fully localized Spanish copy for optional fields and timer conflict', async () => {
+    await AsyncStorage.setItem('freelance-ops:language', 'es');
+    const StartWorkScreen = loadStartWorkScreen();
+    const application = makeApplication(runningSession);
+    const view = await render(
+      <ThemeProvider systemColorScheme="dark"><I18nProvider><ApplicationContextProvider application={application as never}>
+        <StartWorkScreen />
+      </ApplicationContextProvider></I18nProvider></ThemeProvider>,
+    );
+
+    expect((await view.findAllByText('Iniciar trabajo')).length).toBeGreaterThan(0);
+    expect(view.getByText('Tarea · opcional')).toBeTruthy();
+    expect(view.getByText('Actividad · opcional')).toBeTruthy();
+    expect(view.getByText('Descripción · opcional')).toBeTruthy();
+    expect(view.getByLabelText('Cambiar proyecto')).toBeTruthy();
+
+    await fireEvent.press(view.getByLabelText('Iniciar trabajo'));
+    expect(await view.findByText('Ya hay un temporizador activo')).toBeTruthy();
+    expect(view.getByText('Detener actual e iniciar seleccionado')).toBeTruthy();
+    expect(view.getByText('Cancelar')).toBeTruthy();
+  });
+
   it('requires an explicit stop-current decision when another timer is active', async () => {
     const StartWorkScreen = loadStartWorkScreen();
     const application = makeApplication(runningSession);
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <StartWorkScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
     await view.findByText('Mailing tool');

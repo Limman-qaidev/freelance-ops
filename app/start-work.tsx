@@ -1,229 +1,305 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import type { Activity } from '@/domain/activities/activity';
 import type { Project } from '@/domain/projects/project';
 import type { Task } from '@/domain/tasks/task';
+import { useUiCopy } from '@/i18n/use-ui-copy';
 import { useApplication } from '@/providers/application-context';
 import { ActionButton } from '@/ui/components/action-button';
+import { IconButton } from '@/ui/components/icon-button';
+import { SelectionRow, TextField } from '@/ui/components/form-fields';
 import { ScreenShell } from '@/ui/components/screen-shell';
-import { SelectionChip } from '@/ui/components/selection-chip';
-import { colors, radii, spacing, typography } from '@/ui/theme/tokens';
+import { useTheme } from '@/ui/theme/use-theme';
 
-function isTrackableProject(project: Project): boolean {
-  return project.status === 'PLANNED' || project.status === 'ACTIVE';
-}
+const trackableProject = (project: Project) =>
+  project.status === 'PLANNED' || project.status === 'ACTIVE';
 
-function isTrackableTask(task: Task): boolean {
-  return task.status === 'PENDING' || task.status === 'IN_PROGRESS';
-}
+const trackableTask = (task: Task) =>
+  task.status === 'PENDING' || task.status === 'IN_PROGRESS';
 
 export default function StartWorkScreen() {
-  const { projectId: projectParam } = useLocalSearchParams<{
+  const { projectId: rawProjectId } = useLocalSearchParams<{
     projectId?: string | string[];
   }>();
+  const requestedProjectId = Array.isArray(rawProjectId) ? rawProjectId[0] : rawProjectId;
   const { projectService, taskService, activityService, timeTrackingService } = useApplication();
-  const requestedProjectId = Array.isArray(projectParam) ? projectParam[0] : projectParam;
+  const { theme } = useTheme();
+  const t = useUiCopy();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [activityId, setActivityId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [conflictVisible, setConflictVisible] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [chooser, setChooser] = useState<'task' | 'activity' | 'project' | null>(null);
+  const [conflict, setConflict] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-
-    void Promise.all([
-      projectService.listActiveProjects(),
-      activityService.listActive(),
-    ])
+    void Promise.all([projectService.listActiveProjects(), activityService.listActive()])
       .then(async ([allProjects, activeActivities]) => {
-        const trackableProjects = allProjects.filter(isTrackableProject);
-        const initialProjectId =
-          trackableProjects.find((project) => project.id === requestedProjectId)?.id ??
-          trackableProjects[0]?.id ??
+        const availableProjects = allProjects.filter(trackableProject);
+        const nextProjectId =
+          availableProjects.find((project) => project.id === requestedProjectId)?.id ??
+          availableProjects[0]?.id ??
           null;
-        const initialTasks = initialProjectId
-          ? (await taskService.listTasksForProject(initialProjectId)).filter(isTrackableTask)
-          : [];
 
-        if (!mounted) return;
-        setProjects(trackableProjects);
+        setProjects(availableProjects);
         setActivities(activeActivities);
-        setSelectedProjectId(initialProjectId);
-        setTasks(initialTasks);
+        setProjectId(nextProjectId);
+        setTasks(
+          nextProjectId
+            ? (await taskService.listTasksForProject(nextProjectId)).filter(trackableTask)
+            : [],
+        );
       })
-      .catch(() => {
-        if (mounted) setError('Unable to prepare the local Start Work form.');
-      });
+      .catch(() =>
+        setError(
+          t(
+            'startWork.prepareError',
+            'Unable to prepare the local Start Work form.',
+          ),
+        ),
+      );
+  }, [activityService, projectService, requestedProjectId, taskService, t]);
 
-    return () => {
-      mounted = false;
-    };
-  }, [activityService, projectService, requestedProjectId, taskService]);
-
-  async function selectProject(projectId: string) {
-    setSelectedProjectId(projectId);
-    setSelectedTaskId(null);
-    try {
-      const projectTasks = await taskService.listTasksForProject(projectId);
-      setTasks(projectTasks.filter(isTrackableTask));
-    } catch {
-      setTasks([]);
-      setError('Unable to load tasks for the selected project.');
-    }
+  async function selectProject(id: string) {
+    setProjectId(id);
+    setTaskId(null);
+    setTasks((await taskService.listTasksForProject(id)).filter(trackableTask));
+    setChooser(null);
   }
 
-  async function startSelected() {
-    if (!selectedProjectId) return;
+  const selectedProject = projects.find((project) => project.id === projectId);
+  const selectedTask = tasks.find((task) => task.id === taskId);
+  const selectedActivity = activities.find((activity) => activity.id === activityId);
+
+  async function start() {
+    if (!projectId) return;
     await timeTrackingService.startWork({
-      projectId: selectedProjectId,
-      taskId: selectedTaskId,
-      activityId: selectedActivityId,
+      projectId,
+      taskId,
+      activityId,
       description: description.trim() || null,
     });
     router.replace('/' as never);
   }
 
   async function requestStart() {
-    if (!selectedProjectId || busy) return;
+    if (!projectId || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const activeSession = await timeTrackingService.getActiveSession();
-      if (activeSession) {
-        setConflictVisible(true);
-        return;
+      if (await timeTrackingService.getActiveSession()) {
+        setConflict(true);
+      } else {
+        await start();
       }
-      await startSelected();
     } catch {
-      setError('Unable to start this work session.');
+      setError(t('startWork.startError', 'Unable to start this work session.'));
     } finally {
       setBusy(false);
     }
   }
 
-  async function stopCurrentAndStart() {
-    if (busy) return;
+  async function replaceCurrent() {
     setBusy(true);
     setError(null);
     try {
       await timeTrackingService.stopWork();
-      setConflictVisible(false);
-      await startSelected();
+      await start();
     } catch {
-      setError('Unable to replace the current work session.');
-    } finally {
+      setError(
+        t(
+          'startWork.replaceError',
+          'Unable to replace the current work session.',
+        ),
+      );
       setBusy(false);
     }
   }
 
-  const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null;
-  const alternativeProjects = projects.filter((project) => project.id !== selectedProjectId);
+  const itemList =
+    chooser === 'project' ? projects : chooser === 'task' ? tasks : activities;
 
   return (
     <ScreenShell
-      title="Start Work"
-      subtitle="Project is enough to begin. Task, activity and notes can stay empty."
+      title={t('startWork.title', 'Start Work')}
+      subtitle={t(
+        'startWork.subtitle',
+        'Project is required; task, activity and description are optional.',
+      )}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ScrollView
+        contentContainerStyle={{ gap: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <IconButton
+            icon="back"
+            accessibilityLabel={t('startWork.back', 'Back')}
+            onPress={() => router.back()}
+          />
+          <Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>
+            {t('startWork.contextHelp', 'Choose the context for this work session')}
+          </Text>
+        </View>
 
-        <Text style={styles.label}>Project</Text>
-        {selectedProject ? (
-          <View style={styles.selectedProjectCard}>
-            <Text style={styles.projectName}>{selectedProject.name}</Text>
-            <Text style={styles.muted}>{selectedProject.status === 'PLANNED' ? 'Planned' : 'Active'}</Text>
+        {error ? (
+          <Text
+            accessibilityRole="alert"
+            style={{ ...theme.typography.caption, color: theme.colors.error }}
+          >
+            {error}
+          </Text>
+        ) : null}
+
+        <View
+          style={{
+            padding: theme.spacing.md,
+            borderRadius: theme.radii.md,
+            backgroundColor: theme.colors.surfaceMuted,
+            borderColor: theme.colors.border,
+            borderWidth: 1,
+            gap: theme.spacing.xs,
+          }}
+        >
+          <Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>
+            {t('startWork.project', 'Project')}
+          </Text>
+          <Text style={{ ...theme.typography.bodyStrong, color: theme.colors.textPrimary }}>
+            {selectedProject?.name ??
+              t('startWork.noTrackableProject', 'No trackable project')}
+          </Text>
+          <Pressable
+            onPress={() => setChooser(chooser === 'project' ? null : 'project')}
+            accessibilityRole="button"
+            accessibilityLabel={t('startWork.changeProject', 'Change project')}
+            style={{ minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }}
+          >
+            <Text style={{ ...theme.typography.caption, color: theme.colors.accent }}>
+              {t('startWork.changeProject', 'Change project')}
+            </Text>
+          </Pressable>
+        </View>
+
+        <SelectionRow
+          label={t('startWork.taskOptional', 'Task (optional)')}
+          accessibilityLabel={t('startWork.task', 'Task')}
+          value={selectedTask?.name ?? t('common.none', 'None')}
+          onPress={() => setChooser(chooser === 'task' ? null : 'task')}
+        />
+        <SelectionRow
+          label={t('startWork.activityOptional', 'Activity (optional)')}
+          accessibilityLabel={t('startWork.activity', 'Activity')}
+          value={selectedActivity?.name ?? t('common.none', 'None')}
+          onPress={() => setChooser(chooser === 'activity' ? null : 'activity')}
+        />
+
+        {chooser ? (
+          <View
+            style={{
+              gap: theme.spacing.sm,
+              padding: theme.spacing.md,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.md,
+              backgroundColor: theme.colors.surface,
+            }}
+          >
+            {itemList.length === 0 ? (
+              <Text style={{ ...theme.typography.caption, color: theme.colors.textMuted }}>
+                {t('startWork.noOptions', 'No available options.')}
+              </Text>
+            ) : (
+              itemList.map((item) => (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    if (chooser === 'project') {
+                      void selectProject(item.id);
+                    } else if (chooser === 'task') {
+                      setTaskId(taskId === item.id ? null : item.id);
+                      setChooser(null);
+                    } else {
+                      setActivityId(activityId === item.id ? null : item.id);
+                      setChooser(null);
+                    }
+                  }}
+                  style={{ minHeight: 44, justifyContent: 'center' }}
+                >
+                  <Text style={{ ...theme.typography.body, color: theme.colors.textPrimary }}>
+                    {item.name}
+                  </Text>
+                </Pressable>
+              ))
+            )}
           </View>
-        ) : (
-          <Text style={styles.muted}>No trackable project is available.</Text>
-        )}
-        {alternativeProjects.length > 0 ? (
-          <>
-            <Text style={styles.muted}>Change project</Text>
-            <View style={styles.chips}>
-              {alternativeProjects.map((project) => (
-                <SelectionChip
-                  key={project.id}
-                  label={project.name}
-                  selected={false}
-                  accessibilityLabel={`Select project ${project.name}`}
-                  onPress={() => void selectProject(project.id)}
-                />
-              ))}
-            </View>
-          </>
         ) : null}
 
-        <Text style={styles.label}>Task (optional)</Text>
-        <View style={styles.chips}>
-          {tasks.map((task) => (
-            <SelectionChip
-              key={task.id}
-              label={task.name}
-              selected={task.id === selectedTaskId}
-              accessibilityLabel={`Select task ${task.name}`}
-              onPress={() => setSelectedTaskId(task.id === selectedTaskId ? null : task.id)}
-            />
-          ))}
-        </View>
-        {selectedProjectId && tasks.length === 0 ? (
-          <Text style={styles.muted}>No open tasks. You can still start at project level.</Text>
-        ) : null}
-
-        <Text style={styles.label}>Activity (optional)</Text>
-        <View style={styles.chips}>
-          {activities.map((activity) => (
-            <SelectionChip
-              key={activity.id}
-              label={activity.name}
-              selected={activity.id === selectedActivityId}
-              accessibilityLabel={`Select activity ${activity.name}`}
-              onPress={() =>
-                setSelectedActivityId(activity.id === selectedActivityId ? null : activity.id)
-              }
-            />
-          ))}
-        </View>
-
-        <Text style={styles.label}>Description (optional)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="What are you working on?"
+        <TextField
+          label={t('startWork.descriptionOptional', 'Description (optional)')}
+          accessibilityLabel={t('startWork.description', 'Description')}
+          placeholder={t(
+            'startWork.descriptionPlaceholder',
+            'Add an optional note',
+          )}
+          multiline
           value={description}
           onChangeText={setDescription}
-          multiline
         />
 
         <ActionButton
-          label={busy ? 'Starting…' : 'Start Work'}
-          accessibilityLabel="Start Work"
+          label={
+            busy
+              ? t('startWork.starting', 'Starting…')
+              : t('startWork.action', 'Start Work')
+          }
+          accessibilityLabel={t('startWork.action', 'Start Work')}
+          disabled={!projectId || busy}
           onPress={() => void requestStart()}
         />
-        <ActionButton label="Back" variant="secondary" onPress={() => router.back()} />
 
-        {conflictVisible ? (
-          <View style={styles.conflictCard}>
-            <Text style={styles.conflictTitle}>Timer already active</Text>
-            <Text style={styles.muted}>
-              Stop the current session before starting the selected project, or cancel and keep it running.
+        {conflict ? (
+          <View
+            style={{
+              padding: theme.spacing.lg,
+              gap: theme.spacing.sm,
+              borderRadius: theme.radii.lg,
+              backgroundColor: theme.colors.surfaceElevated,
+              borderColor: theme.colors.borderStrong,
+              borderWidth: 1,
+            }}
+          >
+            <Text style={{ ...theme.typography.bodyStrong, color: theme.colors.textPrimary }}>
+              {t('startWork.timerActiveTitle', 'Timer already active')}
+            </Text>
+            <Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>
+              {t(
+                'startWork.timerActiveBody',
+                'Stop the current session before starting this project, or cancel and keep it running.',
+              )}
             </Text>
             <ActionButton
-              label="Stop current & start selected"
+              label={t(
+                'startWork.replaceAction',
+                'Stop current & start selected',
+              )}
               variant="danger"
-              onPress={() => void stopCurrentAndStart()}
+              disabled={busy}
+              onPress={() => void replaceCurrent()}
             />
             <ActionButton
-              label="Cancel"
+              label={t('more.cancel', 'Cancel')}
               variant="secondary"
-              onPress={() => setConflictVisible(false)}
+              disabled={busy}
+              onPress={() => setConflict(false)}
             />
           </View>
         ) : null}
@@ -231,67 +307,3 @@ export default function StartWorkScreen() {
     </ScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  content: {
-    gap: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-  label: {
-    color: colors.textPrimary,
-    fontSize: typography.caption,
-    fontWeight: '700',
-  },
-  selectedProjectCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.accent,
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  projectName: {
-    color: colors.textPrimary,
-    fontSize: typography.sectionTitle,
-    fontWeight: '700',
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  input: {
-    minHeight: 88,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.md,
-    color: colors.textPrimary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: typography.body,
-    textAlignVertical: 'top',
-  },
-  muted: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-  },
-  conflictCard: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  conflictTitle: {
-    color: '#991B1B',
-    fontSize: typography.sectionTitle,
-    fontWeight: '700',
-  },
-  error: {
-    color: '#B91C1C',
-    fontSize: typography.caption,
-    fontWeight: '600',
-  },
-});

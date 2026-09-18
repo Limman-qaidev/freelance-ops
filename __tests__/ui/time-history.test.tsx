@@ -1,8 +1,14 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import TimeHistoryScreen from '../../app/time-history';
+import { I18nProvider } from '../../src/i18n/i18n-provider';
 import { ApplicationContextProvider } from '../../src/providers/application-context';
+import { darkTheme } from '../../src/ui/theme/theme';
+import { ThemeProvider } from '../../src/ui/theme/theme-provider';
+
+jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'es' }] }));
 
 jest.mock('expo-router', () => ({
   router: {
@@ -75,26 +81,37 @@ function makeApplication() {
 }
 
 describe('Time history', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem('freelance-ops:language', 'es');
+    jest.clearAllMocks();
+  });
 
-  it('groups recent entries by local work date and opens create/edit routes', async () => {
+  it('uses the current theme and language while preserving create/edit navigation', async () => {
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <TimeHistoryScreen />
-      </ApplicationContextProvider>,
+      <ThemeProvider systemColorScheme="dark">
+        <I18nProvider>
+          <ApplicationContextProvider application={application as never}>
+            <TimeHistoryScreen />
+          </ApplicationContextProvider>
+        </I18nProvider>
+      </ThemeProvider>,
     );
 
-    expect(await view.findByText('2026-09-16')).toBeTruthy();
+    expect(await view.findByText('Historial de tiempo')).toBeTruthy();
     expect(await view.findByText('Mailing tool')).toBeTruthy();
     expect(view.getByText('Build parser')).toBeTruthy();
     expect(view.getByText('1 h 30 min')).toBeTruthy();
     expect(view.getByText('Manual')).toBeTruthy();
 
-    await fireEvent.press(view.getByLabelText('Add manual time'));
+    const entry = view.getByLabelText('Editar registro de tiempo Build parser');
+    expect(entry).toHaveStyle({ backgroundColor: darkTheme.colors.surface });
+
+    await fireEvent.press(view.getByLabelText('Añadir tiempo manual'));
     expect(router.push).toHaveBeenCalledWith('/time-entry/new');
 
-    await fireEvent.press(view.getByLabelText('Edit time entry Build parser'));
+    await fireEvent.press(entry);
     expect(router.push).toHaveBeenCalledWith('/time-entry/entry-1');
 
     await waitFor(() => expect(application.manualTimeService.listRecentGrouped).toHaveBeenCalled());

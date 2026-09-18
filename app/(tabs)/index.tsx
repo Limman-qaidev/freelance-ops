@@ -1,356 +1,294 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect as useExpoFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import type { Project } from '@/domain/projects/project';
 import type { TimerSession } from '@/domain/time-tracking/work-interval';
+import { useUiCopy } from '@/i18n/use-ui-copy';
 import { useApplication } from '@/providers/application-context';
-import { ActionButton } from '@/ui/components/action-button';
+import { ActiveTimerCard } from '@/ui/components/active-timer-card';
+import { AppIcon } from '@/ui/components/app-icon';
+import { EmptyState } from '@/ui/components/empty-state';
+import { ProjectRow } from '@/ui/components/project-row';
 import { ScreenShell } from '@/ui/components/screen-shell';
-import { colors, radii, spacing, typography } from '@/ui/theme/tokens';
+import { SectionHeader } from '@/ui/components/section-header';
+import { useTheme } from '@/ui/theme/use-theme';
 
 type ProjectCard = {
   project: Project;
   clientName: string;
 };
 
-function isTrackable(project: Project): boolean {
-  return project.status === 'PLANNED' || project.status === 'ACTIVE';
-}
+const useRefreshFocus =
+  useExpoFocusEffect ??
+  ((callback: () => void | (() => void)) => useEffect(callback, [callback]));
 
-function formatDuration(milliseconds: number): string {
-  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return [hours, minutes, seconds]
-    .map((value) => value.toString().padStart(2, '0'))
+const trackable = (project: Project) =>
+  project.status === 'PLANNED' || project.status === 'ACTIVE';
+
+function formatDuration(milliseconds: number) {
+  return [
+    Math.floor(milliseconds / 3_600_000),
+    Math.floor((milliseconds % 3_600_000) / 60_000),
+    Math.floor((milliseconds % 60_000) / 1_000),
+  ]
+    .map((part) => String(Math.max(0, part)).padStart(2, '0'))
     .join(':');
 }
 
 export default function TodayScreen() {
   const { clientService, projectService, timeTrackingService } = useApplication();
-  const [projectCards, setProjectCards] = useState<ProjectCard[]>([]);
-  const [activeSession, setActiveSession] = useState<TimerSession | null>(null);
+  const { theme } = useTheme();
+  const t = useUiCopy();
+
+  const [cards, setCards] = useState<ProjectCard[]>([]);
+  const [session, setSession] = useState<TimerSession | null>(null);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
-  const [activeClientName, setActiveClientName] = useState<string>('');
-  const [elapsedMs, setElapsedMs] = useState(0);
+  const [activeClient, setActiveClient] = useState('');
+  const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const active = await timeTrackingService.getActiveSession();
+      setSession(active);
+      if (active) {
+        setElapsed(await timeTrackingService.getElapsedDuration(new Date().toISOString()));
+      }
 
-    void Promise.all([
-      projectService.listActiveProjects(),
-      timeTrackingService.getActiveSession(),
-    ])
-      .then(async ([projects, session]) => {
-        const trackableProjects = projects.filter(isTrackable);
-        const cards = await Promise.all(
-          trackableProjects.map(async (project) => {
-            const client = await clientService.getById(project.clientId);
-            return {
-              project,
-              clientName: client?.name ?? 'Unknown client',
-            };
-          }),
+      const projects = await projectService.listActiveProjects();
+      const nextCards = await Promise.all(
+        projects.filter(trackable).map(async (project) => ({
+          project,
+          clientName: (await clientService.getById(project.clientId))?.name ?? '—',
+        })),
+      );
+      setCards(nextCards);
+
+      if (active) {
+        const project =
+          projects.find((item) => item.id === active.timeEntry.projectId) ??
+          (await projectService.getById(active.timeEntry.projectId));
+        setActiveProject(project ?? null);
+        setActiveClient(
+          project ? (await clientService.getById(project.clientId))?.name ?? '—' : '',
         );
+      }
+    } catch {
+      setError(
+        t(
+          'today.refreshError',
+          'Unable to refresh local work data. Timer controls remain available.',
+        ),
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [clientService, projectService, timeTrackingService, t]);
 
-        let sessionProject: Project | null = null;
-        let sessionClientName = '';
-        let duration = 0;
-        if (session) {
-          sessionProject =
-            projects.find((project) => project.id === session.timeEntry.projectId) ??
-            (await projectService.getById(session.timeEntry.projectId));
-          if (sessionProject) {
-            sessionClientName =
-              (await clientService.getById(sessionProject.clientId))?.name ?? 'Unknown client';
-          }
-          duration = await timeTrackingService.getElapsedDuration(new Date().toISOString());
-        }
-
-        if (!mounted) return;
-        setProjectCards(cards);
-        setActiveSession(session);
-        setActiveProject(sessionProject);
-        setActiveClientName(sessionClientName);
-        setElapsedMs(duration);
-      })
-      .catch(() => {
-        if (mounted) setError('Unable to load your local work state.');
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [clientService, projectService, timeTrackingService]);
+  useRefreshFocus(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
 
   useEffect(() => {
-    if (!activeSession || activeSession.state !== 'RUNNING') return undefined;
-
-    let mounted = true;
-    const intervalId = setInterval(() => {
-      void timeTrackingService
-        .getElapsedDuration(new Date().toISOString())
-        .then((duration) => {
-          if (mounted) setElapsedMs(duration);
-        });
-    }, 1000);
-
-    return () => {
-      mounted = false;
-      clearInterval(intervalId);
-    };
-  }, [activeSession, timeTrackingService]);
+    if (!session || session.state !== 'RUNNING') return;
+    const interval = setInterval(
+      () =>
+        void timeTrackingService
+          .getElapsedDuration(new Date().toISOString())
+          .then(setElapsed)
+          .catch(() => undefined),
+      1_000,
+    );
+    return () => clearInterval(interval);
+  }, [session, timeTrackingService]);
 
   async function pause() {
     try {
-      const session = await timeTrackingService.pauseWork();
-      setActiveSession(session);
-      setElapsedMs(await timeTrackingService.getElapsedDuration(new Date().toISOString()));
+      setSession(await timeTrackingService.pauseWork());
     } catch {
-      setError('Unable to pause the current timer.');
+      setError(t('today.pauseError', 'Unable to pause the current timer.'));
     }
   }
 
   async function resume() {
     try {
-      const session = await timeTrackingService.resumeWork();
-      setActiveSession(session);
-      setElapsedMs(await timeTrackingService.getElapsedDuration(new Date().toISOString()));
+      setSession(await timeTrackingService.resumeWork());
     } catch {
-      setError('Unable to resume the current timer.');
+      setError(t('today.resumeError', 'Unable to resume the current timer.'));
     }
   }
 
   async function stop() {
     try {
       await timeTrackingService.stopWork();
-      setActiveSession(null);
+      setSession(null);
+      setElapsed(0);
       setActiveProject(null);
-      setActiveClientName('');
-      setElapsedMs(0);
+      setActiveClient('');
     } catch {
-      setError('Unable to stop the current timer.');
+      setError(t('today.stopError', 'Unable to stop the current timer.'));
     }
   }
 
-  function openStartWork(projectId: string) {
-    router.push({
-      pathname: '/start-work' as never,
-      params: { projectId },
-    });
-  }
+  const date = new Intl.DateTimeFormat(undefined, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date());
 
   return (
-    <ScreenShell
-      title="Today"
-      subtitle="Choose a project and start tracking in seconds. Add structure only when it helps."
-    >
-      <ScrollView contentContainerStyle={styles.content}>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        {activeSession ? (
-          <View style={styles.activeCard}>
-            <Text style={styles.eyebrow}>Active session</Text>
-            <Text style={styles.activeTitle}>{activeProject?.name ?? 'Current project'}</Text>
-            {activeClientName ? <Text style={styles.muted}>{activeClientName}</Text> : null}
-            <Text style={styles.timer}>{formatDuration(elapsedMs)}</Text>
-            <Text style={styles.stateLabel}>{activeSession.state === 'PAUSED' ? 'Paused' : 'Running'}</Text>
-            <View style={styles.actions}>
-              {activeSession.state === 'RUNNING' ? (
-                <ActionButton label="Pause" onPress={() => void pause()} />
-              ) : (
-                <ActionButton label="Resume" onPress={() => void resume()} />
-              )}
-              <ActionButton label="Stop" variant="secondary" onPress={() => void stop()} />
-            </View>
+    <ScreenShell title={t('nav.today', 'Today')} subtitle={date}>
+      <ScrollView
+        contentContainerStyle={{ gap: theme.spacing.md, paddingBottom: theme.spacing.xxl }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {error ? (
+          <View style={{ gap: theme.spacing.xs }}>
+            <Text
+              accessibilityRole="alert"
+              style={{ ...theme.typography.caption, color: theme.colors.error }}
+            >
+              {error}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('today.retry', 'Retry')}
+              onPress={() => void refresh()}
+              style={{ minHeight: 44, justifyContent: 'center' }}
+            >
+              <Text style={{ ...theme.typography.caption, color: theme.colors.accent }}>
+                {t('today.retry', 'Retry')}
+              </Text>
+            </Pressable>
           </View>
         ) : null}
 
-        <View style={styles.quickActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open expenses from Today"
-            style={styles.quickAction}
-            onPress={() => router.push('/expenses' as never)}
-          >
-            <Text style={styles.quickActionText}>Expenses</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Add expense from Today"
-            style={styles.quickAction}
-            onPress={() => router.push('/expense/edit' as never)}
-          >
-            <Text style={styles.quickActionText}>Add expense</Text>
-          </Pressable>
-        </View>
+        {session ? (
+          <ActiveTimerCard
+            projectName={activeProject?.name ?? t('today.currentProject', 'Current project')}
+            context={activeClient}
+            elapsed={formatDuration(elapsed)}
+            status={session.state === 'PAUSED' ? 'paused' : 'running'}
+            statusLabel={
+              session.state === 'PAUSED'
+                ? t('timer.paused', 'Paused')
+                : t('timer.running', 'Running')
+            }
+            pauseLabel={t('timer.pause', 'Pause')}
+            resumeLabel={t('timer.resume', 'Resume')}
+            stopLabel={t('timer.stop', 'Stop')}
+            onPause={() => void pause()}
+            onResume={() => void resume()}
+            onStop={() => void stop()}
+          />
+        ) : null}
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active projects</Text>
-          <Text style={styles.muted}>Tap one to prepare a work session.</Text>
-        </View>
+        <SectionHeader
+          title={t('today.activeProjects', 'Active projects')}
+          metadata={cards.length ? String(cards.length) : undefined}
+        />
 
-        {projectCards.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.cardTitle}>No trackable projects yet</Text>
-            <Text style={styles.muted}>Create or reactivate a project from Projects.</Text>
-          </View>
-        ) : (
-          projectCards.map(({ project, clientName }) => (
-            <Pressable
+        {loading ? (
+          <Text style={{ ...theme.typography.caption, color: theme.colors.textMuted }}>
+            {t('today.loadingProjects', 'Loading projects…')}
+          </Text>
+        ) : null}
+
+        {!loading && !cards.length ? (
+          <EmptyState
+            title={t('today.noActiveProjects', 'No active projects')}
+            body={t(
+              'today.noActiveProjectsBody',
+              'Create a project to start tracking time.',
+            )}
+            actionLabel={t('common.createProject', 'Create project')}
+            onActionPress={() => router.push('/(tabs)/projects' as never)}
+          />
+        ) : null}
+
+        {cards.map(({ project, clientName }) => {
+          const statusLabel =
+            project.status === 'PLANNED'
+              ? t('today.statusPlanned', 'Planned')
+              : t('today.statusActive', 'Active');
+          const metadata = project.plannedEndDate
+            ? `${t('today.due', 'Due')} ${project.plannedEndDate}`
+            : undefined;
+
+          return (
+            <ProjectRow
               key={project.id}
-              accessibilityRole="button"
-              accessibilityLabel={`Start work on ${project.name}`}
-              onPress={() => openStartWork(project.id)}
-              style={styles.projectCard}
-            >
-              <View style={styles.projectHeader}>
-                <View style={styles.projectCopy}>
-                  <Text style={styles.cardTitle}>{project.name}</Text>
-                  <Text style={styles.muted}>{clientName}</Text>
-                </View>
-                <View style={styles.statusPill}>
-                  <Text style={styles.statusText}>{project.status === 'PLANNED' ? 'Planned' : 'Active'}</Text>
-                </View>
-              </View>
-              {project.plannedEndDate ? (
-                <Text style={styles.meta}>Target {project.plannedEndDate}</Text>
-              ) : null}
-              <Text style={styles.startHint}>Start work →</Text>
-            </Pressable>
-          ))
-        )}
+              projectName={project.name}
+              clientName={clientName}
+              statusLabel={statusLabel}
+              metadata={metadata}
+              trailingIcon="play"
+              accessibilityLabel={`${t('today.startWorkOn', 'Start work on')} ${project.name}`}
+              onPress={() =>
+                router.push({
+                  pathname: '/start-work' as never,
+                  params: { projectId: project.id },
+                })
+              }
+            />
+          );
+        })}
+
+        <View style={{ gap: theme.spacing.sm }}>
+          <SectionHeader title={t('today.quickActions', 'Quick actions')} />
+          <QuickAction
+            label={t('common.addManualTime', 'Add manual time')}
+            icon="manualTime"
+            onPress={() => router.push('/time-entry/new' as never)}
+          />
+          <QuickAction
+            label={t('common.addExpense', 'Add expense')}
+            icon="expense"
+            onPress={() => router.push('/expense/edit' as never)}
+          />
+        </View>
       </ScrollView>
     </ScreenShell>
   );
 }
 
-const styles = StyleSheet.create({
-  content: {
-    gap: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-  activeCard: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#BBF7D0',
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  eyebrow: {
-    color: colors.success,
-    fontSize: typography.caption,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  activeTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.sectionTitle,
-    fontWeight: '700',
-  },
-  timer: {
-    color: colors.textPrimary,
-    fontSize: 32,
-    fontVariant: ['tabular-nums'],
-    fontWeight: '700',
-  },
-  stateLabel: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-    fontWeight: '600',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  quickAction: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  quickActionText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: '700',
-  },
-  sectionHeader: {
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.sectionTitle,
-    fontWeight: '700',
-  },
-  projectCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  projectHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  projectCopy: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  cardTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.body,
-    fontWeight: '700',
-  },
-  muted: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-  },
-  meta: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-  },
-  statusPill: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: radii.lg,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  statusText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: '700',
-  },
-  startHint: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: '700',
-  },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    gap: spacing.xs,
-  },
-  error: {
-    color: '#B91C1C',
-    fontSize: typography.caption,
-    fontWeight: '600',
-  },
-});
+function QuickAction({
+  label,
+  icon,
+  onPress,
+}: {
+  label: string;
+  icon: 'manualTime' | 'expense';
+  onPress: () => void;
+}) {
+  const { theme } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: 52,
+        backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radii.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        gap: theme.spacing.md,
+      })}
+    >
+      <AppIcon name={icon} color={theme.colors.accent} />
+      <Text style={{ flex: 1, ...theme.typography.bodyStrong, color: theme.colors.textPrimary }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}

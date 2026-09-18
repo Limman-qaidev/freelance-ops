@@ -1,7 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
+import { I18nProvider } from '../../src/i18n/i18n-provider';
 import { ApplicationContextProvider } from '../../src/providers/application-context';
+import { darkTheme } from '../../src/ui/theme/theme';
+import { ThemeProvider } from '../../src/ui/theme/theme-provider';
+
+jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'es' }] }));
 
 let mockEntryId = 'new';
 
@@ -122,8 +128,10 @@ function makeApplication(record = baseRecord) {
 }
 
 describe('time entry editor', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockEntryId = 'new';
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem('freelance-ops:language', 'es');
     jest.clearAllMocks();
   });
 
@@ -131,20 +139,26 @@ describe('time entry editor', () => {
     const TimeEntryEditor = loadEditor();
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <TimeEntryEditor />
-      </ApplicationContextProvider>,
+      <ThemeProvider systemColorScheme="dark">
+        <I18nProvider>
+          <ApplicationContextProvider application={application as never}>
+            <TimeEntryEditor />
+          </ApplicationContextProvider>
+        </I18nProvider>
+      </ThemeProvider>,
     );
 
+    expect(await view.findByText('Añadir tiempo manual')).toBeTruthy();
     expect(await view.findByText('Mailing tool')).toBeTruthy();
-    await fireEvent.press(view.getByLabelText('Select task SMTP integration'));
-    await fireEvent.press(view.getByLabelText('Select activity Development'));
-    await fireEvent.changeText(view.getByLabelText('Work date'), '2026-09-16');
-    await fireEvent.changeText(view.getByLabelText('Start time'), '09:00');
-    await fireEvent.changeText(view.getByLabelText('Duration minutes'), '60');
-    await fireEvent.changeText(view.getByLabelText('Timezone'), 'Europe/London');
-    await fireEvent.changeText(view.getByLabelText('Description'), 'Manual repair');
-    await fireEvent.press(view.getByLabelText('Save time entry'));
+    expect(view.getByLabelText('Fecha de trabajo')).toHaveStyle({ backgroundColor: darkTheme.colors.surface, color: darkTheme.colors.textPrimary, minHeight: 48 });
+    await fireEvent.press(view.getByLabelText('Seleccionar tarea SMTP integration'));
+    await fireEvent.press(view.getByLabelText('Seleccionar actividad Development'));
+    await fireEvent.changeText(view.getByLabelText('Fecha de trabajo'), '2026-09-16');
+    await fireEvent.changeText(view.getByLabelText('Hora de inicio'), '09:00');
+    await fireEvent.changeText(view.getByLabelText('Duración en minutos'), '60');
+    await fireEvent.changeText(view.getByLabelText('Zona horaria'), 'Europe/London');
+    await fireEvent.changeText(view.getByLabelText('Descripción'), 'Manual repair');
+    await fireEvent.press(view.getByLabelText('Guardar registro de tiempo'));
 
     await waitFor(() => expect(application.manualTimeService.create).toHaveBeenCalledTimes(1));
     expect(application.manualTimeService.create).toHaveBeenCalledWith(
@@ -157,9 +171,9 @@ describe('time entry editor', () => {
         timing: expect.objectContaining({ kind: 'DURATION', durationMinutes: 60 }),
       }),
     );
-    expect(await view.findByText(/overlaps existing recorded time/i)).toBeTruthy();
+    expect(await view.findByText(/se solapa con tiempo ya registrado/i)).toBeTruthy();
     expect(router.replace).not.toHaveBeenCalled();
-    expect(view.queryByLabelText('Save time entry')).toBeNull();
+    expect(view.queryByLabelText('Guardar registro de tiempo')).toBeNull();
   });
 
   it('loads archived master-data references, edits a single-interval record and deletes it explicitly', async () => {
@@ -167,17 +181,21 @@ describe('time entry editor', () => {
     const TimeEntryEditor = loadEditor();
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <TimeEntryEditor />
-      </ApplicationContextProvider>,
+      <ThemeProvider systemColorScheme="dark">
+        <I18nProvider>
+          <ApplicationContextProvider application={application as never}>
+            <TimeEntryEditor />
+          </ApplicationContextProvider>
+        </I18nProvider>
+      </ThemeProvider>,
     );
 
     expect(await view.findByText('Mailing tool')).toBeTruthy();
     expect(await view.findByText('SMTP integration')).toBeTruthy();
     expect(await view.findByText('Development')).toBeTruthy();
 
-    await fireEvent.changeText(view.getByLabelText('Description'), 'Corrected metadata');
-    await fireEvent.press(view.getByLabelText('Save time entry'));
+    await fireEvent.changeText(view.getByLabelText('Descripción'), 'Corrected metadata');
+    await fireEvent.press(view.getByLabelText('Guardar registro de tiempo'));
 
     await waitFor(() => expect(application.manualTimeService.update).toHaveBeenCalledTimes(1));
     expect(application.manualTimeService.update).toHaveBeenCalledWith(
@@ -194,9 +212,9 @@ describe('time entry editor', () => {
     );
     expect(router.replace).toHaveBeenCalledWith('/time-history');
 
-    await fireEvent.press(view.getByLabelText('Delete time entry'));
-    expect(await view.findByText('Delete this time entry?')).toBeTruthy();
-    await fireEvent.press(view.getByLabelText('Confirm delete time entry'));
+    await fireEvent.press(view.getByLabelText('Eliminar registro de tiempo'));
+    expect(await view.findByText('¿Eliminar este registro de tiempo?')).toBeTruthy();
+    await fireEvent.press(view.getByLabelText('Confirmar eliminación del registro de tiempo'));
     await waitFor(() => expect(application.manualTimeService.delete).toHaveBeenCalledWith('entry-1'));
   });
 
@@ -221,16 +239,20 @@ describe('time entry editor', () => {
     const TimeEntryEditor = loadEditor();
     const application = makeApplication(pausedRecord);
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <TimeEntryEditor />
-      </ApplicationContextProvider>,
+      <ThemeProvider systemColorScheme="dark">
+        <I18nProvider>
+          <ApplicationContextProvider application={application as never}>
+            <TimeEntryEditor />
+          </ApplicationContextProvider>
+        </I18nProvider>
+      </ThemeProvider>,
     );
 
-    expect(await view.findByText(/timing is locked because this session contains pauses/i)).toBeTruthy();
-    expect(view.queryByLabelText('Work date')).toBeNull();
-    expect(view.queryByLabelText('Timezone')).toBeNull();
-    await fireEvent.changeText(view.getByLabelText('Description'), 'Keep pause structure');
-    await fireEvent.press(view.getByLabelText('Save time entry'));
+    expect(await view.findByText(/la temporización está protegida porque esta sesión contiene pausas/i)).toBeTruthy();
+    expect(view.queryByLabelText('Fecha de trabajo')).toBeNull();
+    expect(view.queryByLabelText('Zona horaria')).toBeNull();
+    await fireEvent.changeText(view.getByLabelText('Descripción'), 'Keep pause structure');
+    await fireEvent.press(view.getByLabelText('Guardar registro de tiempo'));
 
     await waitFor(() => expect(application.manualTimeService.update).toHaveBeenCalledTimes(1));
     expect(application.manualTimeService.update).toHaveBeenCalledWith('entry-1', {

@@ -1,7 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
+import { I18nProvider } from '../../src/i18n/i18n-provider';
 import { ApplicationContextProvider } from '../../src/providers/application-context';
+import { darkTheme } from '../../src/ui/theme/theme';
+import { ThemeProvider } from '../../src/ui/theme/theme-provider';
+
+jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'es' }] }));
 
 jest.mock('expo-router', () => ({
   router: {
@@ -39,6 +45,7 @@ const record = {
     projectAmountMinor: 1111,
     projectCurrency: 'EUR',
     reimbursable: true,
+    billable: false,
     status: 'PENDING',
     createdAt: '2026-09-17T12:00:00.000Z',
     updatedAt: '2026-09-17T12:00:00.000Z',
@@ -63,9 +70,13 @@ function loadExpenses() {
 }
 
 describe('expenses', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem('freelance-ops:language', 'es');
+    jest.clearAllMocks();
+  });
 
-  it('lists recent project expenses, surfaces attachment integrity warnings and opens create/edit routes', async () => {
+  it('uses the current theme and language while preserving expense navigation', async () => {
     const application = {
       projectService: {
         getById: jest.fn(async () => project),
@@ -76,21 +87,29 @@ describe('expenses', () => {
     };
     const ExpensesScreen = loadExpenses();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <ExpensesScreen />
-      </ApplicationContextProvider>,
+      <ThemeProvider systemColorScheme="dark">
+        <I18nProvider>
+          <ApplicationContextProvider application={application as never}>
+            <ExpensesScreen />
+          </ApplicationContextProvider>
+        </I18nProvider>
+      </ThemeProvider>,
     );
 
+    expect(await view.findByText('Gastos')).toBeTruthy();
     expect(await view.findByText('Mailing tool')).toBeTruthy();
     expect(view.getByText('Travel')).toBeTruthy();
     expect(view.getByText('11.11 EUR')).toBeTruthy();
     expect(view.getByText('12.34 USD · FX 0.9')).toBeTruthy();
-    expect(view.getByText(/receipt file is missing/i)).toBeTruthy();
+    expect(view.getByText(/falta el archivo del recibo/i)).toBeTruthy();
 
-    await fireEvent.press(view.getByLabelText('Add expense'));
+    const expense = view.getByLabelText('Editar gasto Taxi');
+    expect(expense).toHaveStyle({ backgroundColor: darkTheme.colors.surface });
+
+    await fireEvent.press(view.getByLabelText('Registrar gasto'));
     expect(router.push).toHaveBeenCalledWith('/expense/edit');
 
-    await fireEvent.press(view.getByLabelText('Edit expense Taxi'));
+    await fireEvent.press(expense);
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/expense/edit',
       params: { id: 'expense-1' },

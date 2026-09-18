@@ -4,10 +4,6 @@ import { ThemeContext } from '@/ui/theme/theme-provider';
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-
-  if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
-  }
-
+  if (!context) throw new Error('useTheme must be used within ThemeProvider');
   return context;
 }
