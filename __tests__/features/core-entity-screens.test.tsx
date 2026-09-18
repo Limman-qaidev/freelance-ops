@@ -1,8 +1,13 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { I18nProvider } from '../../src/i18n/i18n-provider';
 import { ApplicationContextProvider } from '../../src/providers/application-context';
 import { ThemeProvider } from '../../src/ui/theme/theme-provider';
+import { darkTheme } from '../../src/ui/theme/theme';
+
+jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'en' }] }));
 
 jest.mock('expo-router', () => ({
   router: {
@@ -96,7 +101,10 @@ function makeApplication() {
 }
 
 describe('core entity mobile screens', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    jest.clearAllMocks();
+  });
 
   it('manages clients and projects through application services', async () => {
     const { ProjectsManagementScreen } = jest.requireActual(
@@ -182,7 +190,7 @@ describe('core entity mobile screens', () => {
     const application = makeApplication();
     const view = await render(
       <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
-        <ActivitiesManagement />
+        <I18nProvider><ActivitiesManagement /></I18nProvider>
       </ApplicationContextProvider></ThemeProvider>,
     );
 
@@ -191,7 +199,31 @@ describe('core entity mobile screens', () => {
     await fireEvent.press(view.getByText('Add activity'));
     expect(application.activityService.create).toHaveBeenCalledWith({ name: 'Research' });
 
+    await fireEvent.press(view.getByLabelText('Edit activity Development'));
+    await fireEvent.changeText(view.getByLabelText('Activity name'), 'Review');
+    await fireEvent.press(view.getByRole('button', { name: 'Save activity' }));
+    expect(application.activityService.update).toHaveBeenCalledWith({ id: 'activity-1', name: 'Review' });
+
     await fireEvent.press(view.getByLabelText('Archive activity Development'));
     expect(application.activityService.archive).toHaveBeenCalledWith('activity-1');
+  });
+
+  it('renders labelled Spanish activities using dark theme and accessible touch targets', async () => {
+    const { ActivitiesManagement } = jest.requireActual('../../src/features/activities/activities-management');
+    await AsyncStorage.setItem('freelance-ops:language', 'es');
+    const view = await render(
+      <ThemeProvider systemColorScheme="dark"><I18nProvider>
+        <ApplicationContextProvider application={makeApplication() as never}>
+          <ActivitiesManagement />
+        </ApplicationContextProvider>
+      </I18nProvider></ThemeProvider>,
+    );
+    const input = await view.findByLabelText('Nombre de la actividad');
+    expect(view.getByText('Nombre de la actividad')).toBeTruthy();
+    expect(input).toHaveStyle({ color: darkTheme.colors.textPrimary, backgroundColor: darkTheme.colors.surface, minHeight: 48 });
+    expect(await view.findByText('Development')).toHaveStyle({ color: darkTheme.colors.textPrimary });
+    expect(view.getByRole('button', { name: 'Editar actividad Development' })).toHaveStyle({ minHeight: 48 });
+    expect(view.getByRole('button', { name: 'Archivar actividad Development' })).toHaveStyle({ minHeight: 48 });
+    expect(view.getByRole('button', { name: 'Añadir actividad' })).toBeTruthy();
   });
 });
