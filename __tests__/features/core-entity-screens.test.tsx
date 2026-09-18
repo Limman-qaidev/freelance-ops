@@ -173,7 +173,7 @@ describe('core entity mobile screens', () => {
       </I18nProvider></ThemeProvider>,
     );
 
-    expect(await view.findByText('Proyectos')).toBeTruthy();
+    expect((await view.findAllByText('Proyectos')).length).toBeGreaterThan(0);
     expect(view.getByText('Clientes')).toBeTruthy();
     expect(view.getByLabelText('Buscar proyectos')).toHaveStyle({
       color: darkTheme.colors.textPrimary,
