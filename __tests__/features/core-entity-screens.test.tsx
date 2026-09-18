@@ -218,6 +218,37 @@ describe('core entity mobile screens', () => {
     expect(application.taskService.archive).toHaveBeenCalledWith('task-1');
   });
 
+  it('renders Tasks and its editor fully localized in Spanish dark mode', async () => {
+    const { TasksManagementScreen } = jest.requireActual(
+      '../../src/features/tasks/tasks-management-screen',
+    ) as { TasksManagementScreen: React.ComponentType };
+    await AsyncStorage.setItem('freelance-ops:language', 'es');
+    const view = await render(
+      <ThemeProvider systemColorScheme="dark"><I18nProvider>
+        <ApplicationContextProvider application={makeApplication() as never}>
+          <TasksManagementScreen />
+        </ApplicationContextProvider>
+      </I18nProvider></ThemeProvider>,
+    );
+
+    expect(await view.findByText('Tareas')).toBeTruthy();
+    expect(view.getByText('Proyecto')).toBeTruthy();
+    expect(await view.findByText('SMTP integration')).toBeTruthy();
+    expect(view.getByText('Pendiente')).toBeTruthy();
+
+    await fireEvent.press(view.getByText('Añadir tarea'));
+    const nameInput = view.getByLabelText('Nombre de la tarea');
+    expect(nameInput).toHaveStyle({
+      color: darkTheme.colors.textPrimary,
+      backgroundColor: darkTheme.colors.surface,
+    });
+    expect(view.getByText('Descripción · opcional')).toBeTruthy();
+    expect(view.getByText('Prioridad · opcional')).toBeTruthy();
+    expect(view.getByText('Esfuerzo estimado (minutos) · opcional')).toBeTruthy();
+    expect(view.getByText('Fecha de inicio · opcional')).toBeTruthy();
+    expect(view.getByText('Fecha de vencimiento · opcional')).toBeTruthy();
+  });
+
   it('manages configurable activities through application services', async () => {
     const { ActivitiesManagement } = jest.requireActual(
       '../../src/features/activities/activities-management',
