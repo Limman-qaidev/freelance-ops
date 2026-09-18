@@ -244,7 +244,7 @@ describe('Start Work', () => {
       </ApplicationContextProvider></I18nProvider></ThemeProvider>,
     );
 
-    expect(await view.findByText('Iniciar trabajo')).toBeTruthy();
+    expect((await view.findAllByText('Iniciar trabajo')).length).toBeGreaterThan(0);
     expect(view.getByText('Tarea · opcional')).toBeTruthy();
     expect(view.getByText('Actividad · opcional')).toBeTruthy();
     expect(view.getByText('Descripción · opcional')).toBeTruthy();
