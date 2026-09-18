@@ -349,7 +349,7 @@ export default function TodayScreen() {
                         styles.statusPill,
                         {
                           backgroundColor: active
-                            ? '#E7F8EF'
+                            ? theme.colors.successSoft
                             : theme.colors.accentSoft,
                         },
                       ]}
