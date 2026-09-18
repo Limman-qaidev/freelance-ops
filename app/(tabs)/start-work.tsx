@@ -214,7 +214,7 @@ export default function StartWorkScreen() {
                     {
                       backgroundColor:
                         selectedProject.status === 'ACTIVE'
-                          ? '#E7F8EF'
+                          ? theme.colors.successSoft
                           : theme.colors.accentSoft,
                     },
                   ]}
