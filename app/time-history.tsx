@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import type { TimeHistoryRecord } from '@/domain/time-tracking/time-history';
+import { useI18n } from '@/i18n/use-i18n';
 import { useApplication } from '@/providers/application-context';
 import { ActionButton } from '@/ui/components/action-button';
 import { ScreenShell } from '@/ui/components/screen-shell';
-import { colors, radii, spacing, typography } from '@/ui/theme/tokens';
+import { useTheme } from '@/ui/theme/use-theme';
 
 type DisplayEntry = {
   record: TimeHistoryRecord;
@@ -20,8 +21,10 @@ type DisplayGroup = {
 
 export default function TimeHistoryScreen() {
   const { manualTimeService, projectService } = useApplication();
+  const { t } = useI18n();
+  const { theme } = useTheme();
   const [groups, setGroups] = useState<DisplayGroup[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -41,7 +44,7 @@ export default function TimeHistoryScreen() {
         await Promise.all(
           projectIds.map(async (projectId) => {
             const project = await projectService.getById(projectId);
-            projectNames.set(projectId, project?.name ?? 'Unknown project');
+            projectNames.set(projectId, project?.name ?? t('timeHistory.unknownProject'));
           }),
         );
 
@@ -51,69 +54,125 @@ export default function TimeHistoryScreen() {
             localWorkDate: group.localWorkDate,
             entries: group.entries.map((record) => ({
               record,
-              projectName: projectNames.get(record.timeEntry.projectId) ?? 'Unknown project',
+              projectName:
+                projectNames.get(record.timeEntry.projectId) ?? t('timeHistory.unknownProject'),
             })),
           })),
         );
       })
       .catch(() => {
-        if (mounted) setError('Unable to load local time history.');
+        if (mounted) setError(true);
       });
 
     return () => {
       mounted = false;
     };
-  }, [manualTimeService, projectService]);
+  }, [manualTimeService, projectService, t]);
 
   return (
-    <ScreenShell
-      title="Time history"
-      subtitle="Review stopped timer sessions and manual corrections by their original local work date."
-    >
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.actions}>
+    <ScreenShell title={t('timeHistory.title')} subtitle={t('timeHistory.subtitle')}>
+      <ScrollView
+        contentContainerStyle={{ gap: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
+      >
+        <View style={{ gap: theme.spacing.sm }}>
           <ActionButton
-            label="Add manual time"
-            accessibilityLabel="Add manual time"
+            label={t('common.addManualTime')}
+            accessibilityLabel={t('common.addManualTime')}
             onPress={() => router.push('/time-entry/new' as never)}
           />
-          <ActionButton label="Back" variant="secondary" onPress={() => router.back()} />
+          <ActionButton
+            label={t('common.back')}
+            variant="secondary"
+            onPress={() => router.back()}
+          />
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <Text
+            accessibilityRole="alert"
+            style={{ ...theme.typography.caption, color: theme.colors.error }}
+          >
+            {t('timeHistory.error')}
+          </Text>
+        ) : null}
 
         {groups.length === 0 && !error ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.entryTitle}>No historical time yet</Text>
-            <Text style={styles.muted}>Stopped timers and manual entries will appear here.</Text>
+          <View
+            style={{
+              padding: theme.spacing.lg,
+              gap: theme.spacing.xs,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+              backgroundColor: theme.colors.surface,
+            }}
+          >
+            <Text style={{ ...theme.typography.bodyStrong, color: theme.colors.textPrimary }}>
+              {t('timeHistory.emptyTitle')}
+            </Text>
+            <Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>
+              {t('timeHistory.emptyBody')}
+            </Text>
           </View>
         ) : null}
 
         {groups.map((group) => (
-          <View key={group.localWorkDate} style={styles.group}>
-            <Text style={styles.dateTitle}>{group.localWorkDate}</Text>
+          <View key={group.localWorkDate} style={{ gap: theme.spacing.sm }}>
+            <Text style={{ ...theme.typography.section, color: theme.colors.textPrimary }}>
+              {group.localWorkDate}
+            </Text>
             {group.entries.map(({ record, projectName }) => {
-              const label = record.timeEntry.description || 'Tracked session';
+              const label = record.timeEntry.description || t('timeHistory.trackedSession');
               return (
                 <Pressable
                   key={record.timeEntry.id}
                   accessibilityRole="button"
-                  accessibilityLabel={`Edit time entry ${label}`}
+                  accessibilityLabel={`${t('timeHistory.editLabel')} ${label}`}
                   onPress={() => router.push(`/time-entry/${record.timeEntry.id}` as never)}
-                  style={styles.entryCard}
+                  style={({ pressed }) => ({
+                    minHeight: theme.sizing.rowMinHeight,
+                    padding: theme.spacing.md,
+                    gap: theme.spacing.sm,
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radii.lg,
+                    backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
+                  })}
                 >
-                  <View style={styles.entryHeader}>
-                    <View style={styles.entryCopy}>
-                      <Text style={styles.entryTitle}>{projectName}</Text>
-                      <Text style={styles.muted}>{label}</Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'flex-start',
+                      gap: theme.spacing.md,
+                    }}
+                  >
+                    <View style={{ flex: 1, gap: theme.spacing.xs }}>
+                      <Text
+                        style={{ ...theme.typography.bodyStrong, color: theme.colors.textPrimary }}
+                      >
+                        {projectName}
+                      </Text>
+                      <Text
+                        style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}
+                      >
+                        {label}
+                      </Text>
                     </View>
-                    <Text style={styles.duration}>{formatDuration(record.durationMs)}</Text>
-                  </View>
-                  <View style={styles.metaRow}>
-                    <Text style={styles.meta}>
-                      {record.timeEntry.source === 'MANUAL' ? 'Manual' : 'Timer'}
+                    <Text style={{ ...theme.typography.bodyStrong, color: theme.colors.accent }}>
+                      {formatDuration(record.durationMs)}
                     </Text>
-                    <Text style={styles.meta}>{record.timeEntry.billable ? 'Billable' : 'Non-billable'}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+                    <Text style={{ ...theme.typography.caption, color: theme.colors.textMuted }}>
+                      {record.timeEntry.source === 'MANUAL'
+                        ? t('timeHistory.manual')
+                        : t('timeHistory.timer')}
+                    </Text>
+                    <Text style={{ ...theme.typography.caption, color: theme.colors.textMuted }}>
+                      {record.timeEntry.billable
+                        ? t('common.billable')
+                        : t('common.nonBillable')}
+                    </Text>
                   </View>
                 </Pressable>
               );
@@ -133,74 +192,3 @@ function formatDuration(milliseconds: number): string {
   if (minutes === 0) return `${hours} h`;
   return `${hours} h ${minutes} min`;
 }
-
-const styles = StyleSheet.create({
-  content: {
-    gap: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
-  actions: {
-    gap: spacing.sm,
-  },
-  group: {
-    gap: spacing.sm,
-  },
-  dateTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.sectionTitle,
-    fontWeight: '700',
-  },
-  entryCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  entryHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-  },
-  entryCopy: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  entryTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.body,
-    fontWeight: '700',
-  },
-  duration: {
-    color: colors.accent,
-    fontSize: typography.body,
-    fontWeight: '700',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  meta: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-    fontWeight: '600',
-  },
-  muted: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-  },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    gap: spacing.xs,
-  },
-  error: {
-    color: '#B91C1C',
-    fontSize: typography.caption,
-    fontWeight: '600',
-  },
-});
