@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import { ApplicationContextProvider } from '../../src/providers/application-context';
+import { ThemeProvider } from '../../src/ui/theme/theme-provider';
 
 let mockEntryId = 'new';
 
@@ -131,9 +132,11 @@ describe('time entry editor', () => {
     const TimeEntryEditor = loadEditor();
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <TimeEntryEditor />
-      </ApplicationContextProvider>,
+      <ThemeProvider systemColorScheme="light">
+        <ApplicationContextProvider application={application as never}>
+          <TimeEntryEditor />
+        </ApplicationContextProvider>
+      </ThemeProvider>,
     );
 
     expect(await view.findByText('Mailing tool')).toBeTruthy();
@@ -167,9 +170,11 @@ describe('time entry editor', () => {
     const TimeEntryEditor = loadEditor();
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <TimeEntryEditor />
-      </ApplicationContextProvider>,
+      <ThemeProvider systemColorScheme="light">
+        <ApplicationContextProvider application={application as never}>
+          <TimeEntryEditor />
+        </ApplicationContextProvider>
+      </ThemeProvider>,
     );
 
     expect(await view.findByText('Mailing tool')).toBeTruthy();
@@ -221,9 +226,11 @@ describe('time entry editor', () => {
     const TimeEntryEditor = loadEditor();
     const application = makeApplication(pausedRecord);
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
-        <TimeEntryEditor />
-      </ApplicationContextProvider>,
+      <ThemeProvider systemColorScheme="light">
+        <ApplicationContextProvider application={application as never}>
+          <TimeEntryEditor />
+        </ApplicationContextProvider>
+      </ThemeProvider>,
     );
 
     expect(await view.findByText(/timing is locked because this session contains pauses/i)).toBeTruthy();
