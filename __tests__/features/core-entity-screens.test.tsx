@@ -180,7 +180,7 @@ describe('core entity mobile screens', () => {
       backgroundColor: darkTheme.colors.surface,
     });
 
-    await fireEvent.press(view.getByLabelText('Abrir proyecto Mailing tool'));
+    await fireEvent.press(await view.findByLabelText('Abrir proyecto Mailing tool'));
     expect(view.getByRole('tab', { name: 'Resumen' })).toBeTruthy();
     expect(view.getByRole('tab', { name: 'Tareas' })).toBeTruthy();
     expect(view.getByRole('tab', { name: 'Tiempo' })).toBeTruthy();
