@@ -9,8 +9,6 @@ import { ThemeProvider } from '../../src/ui/theme/theme-provider';
 
 jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'es' }] }));
 
-jest.setTimeout(15_000);
-
 jest.mock('expo-router', () => ({
   router: {
     push: jest.fn(),
