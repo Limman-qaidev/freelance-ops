@@ -32,7 +32,7 @@ type MaterialIconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 type AppIconProps = {
   name: AppIconName;
   size?: number;
-  color?: string;
+  color?: ComponentProps<typeof MaterialCommunityIcons>['color'];
 };
 
 export function AppIcon({ name, size = 20, color }: AppIconProps) {
