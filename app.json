@@ -8,7 +8,7 @@
     "userInterfaceStyle": "automatic",
     "android": {
       "predictiveBackGestureEnabled": false,
-      "package": "com.freelanceops.app"
+      "package": "com.jonathansalgadonieto.freelanceops"
     },
     "web": {
       "output": "static"
