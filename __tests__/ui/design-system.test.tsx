@@ -144,6 +144,10 @@ describe('theme contract', () => {
 });
 
 describe('visual primitives', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
   function renderInTheme(node: React.ReactNode) {
     return render(<ThemeProvider systemColorScheme="light">{node}</ThemeProvider>);
   }
