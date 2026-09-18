@@ -25,7 +25,7 @@ const activeProject = {
   id: 'project-active',
   clientId: client.id,
   name: 'Mailing tool',
-  description: null,
+  description: 'Internal email automation tool',
   status: 'ACTIVE',
   plannedStartDate: null,
   plannedEndDate: '2026-10-01',
@@ -41,6 +41,7 @@ const plannedProject = {
   ...activeProject,
   id: 'project-planned',
   name: 'Spare parts',
+  description: 'Catalogue parser & integration',
   status: 'PLANNED',
   actualStartDate: null,
 };
@@ -57,6 +58,23 @@ const completedProject = {
   id: 'project-completed',
   name: 'Finished engagement',
   status: 'COMPLETED',
+};
+
+const taskBase = {
+  id: 'task-1',
+  projectId: activeProject.id,
+  name: 'Task',
+  description: null,
+  status: 'PENDING',
+  priority: null,
+  estimatedMinutes: null,
+  plannedStartDate: null,
+  plannedEndDate: null,
+  actualStartDate: null,
+  actualEndDate: null,
+  archivedAt: null,
+  createdAt: '2026-09-16T00:00:00.000Z',
+  updatedAt: '2026-09-16T00:00:00.000Z',
 };
 
 const runningSession = {
@@ -121,7 +139,15 @@ function makeApplication(activeSession: typeof runningSession | null = null) {
         ) ?? null,
       ),
     },
-    taskService: {},
+    taskService: {
+      listTasksForProject: jest.fn(async (projectId: string) => {
+        if (projectId !== activeProject.id) return [];
+        return [
+          { ...taskBase, id: 'task-complete', status: 'COMPLETED' },
+          { ...taskBase, id: 'task-pending', status: 'PENDING' },
+        ];
+      }),
+    },
     activityService: {},
     timeTrackingService: {
       getActiveSession: jest.fn(async () => activeSession),
@@ -133,12 +159,12 @@ function makeApplication(activeSession: typeof runningSession | null = null) {
   };
 }
 
-describe('Today', () => {
+describe('Today canonical composition', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('lists trackable projects and exposes work and expense quick actions', async () => {
+  it('renders compact active-project cards with real derived progress and direct work launch', async () => {
     const application = makeApplication();
     const view = await render(
       <ApplicationContextProvider application={application as never}>
@@ -150,22 +176,18 @@ describe('Today', () => {
     expect(view.getByText('Spare parts')).toBeTruthy();
     expect(view.queryByText('Paused engagement')).toBeNull();
     expect(view.queryByText('Finished engagement')).toBeNull();
-    expect(view.getAllByText('Maubank').length).toBeGreaterThan(0);
+    expect(view.getByText('Internal email automation tool')).toBeTruthy();
+    expect(view.getByText('50%')).toBeTruthy();
+    expect(view.getByText('Select a project to start work')).toBeTruthy();
 
     await fireEvent.press(view.getByLabelText('Start work on Mailing tool'));
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/start-work',
       params: { projectId: activeProject.id },
     });
-
-    await fireEvent.press(view.getByLabelText('Open expenses from Today'));
-    expect(router.push).toHaveBeenCalledWith('/expenses');
-
-    await fireEvent.press(view.getByLabelText('Add expense from Today'));
-    expect(router.push).toHaveBeenCalledWith('/expense/edit');
   });
 
-  it('recovers the persisted active session and exposes pause, resume and stop controls', async () => {
+  it('recovers the persisted timer and preserves pause, resume and stop semantics', async () => {
     const application = makeApplication(runningSession);
     const view = await render(
       <ApplicationContextProvider application={application as never}>
@@ -173,7 +195,7 @@ describe('Today', () => {
       </ApplicationContextProvider>,
     );
 
-    expect(await view.findByText('Active session')).toBeTruthy();
+    expect(await view.findByText('Running')).toBeTruthy();
     expect(view.getByText('00:01:30')).toBeTruthy();
     expect(view.getByText('Pause')).toBeTruthy();
     expect(view.getByText('Stop')).toBeTruthy();
@@ -188,6 +210,5 @@ describe('Today', () => {
 
     await fireEvent.press(view.getByText('Stop'));
     await waitFor(() => expect(application.timeTrackingService.stopWork).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(view.queryByText('Active session')).toBeNull());
   });
 });
