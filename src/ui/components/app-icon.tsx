@@ -7,6 +7,7 @@ const ICONS = {
   pause: 'pause',
   stop: 'stop',
   chevronRight: 'chevron-right',
+  chevronDown: 'chevron-down',
   add: 'plus',
   error: 'alert-circle-outline',
   warning: 'alert-outline',
@@ -18,6 +19,10 @@ const ICONS = {
   planning: 'calendar-range',
   more: 'dots-horizontal',
   back: 'arrow-left',
+  calendar: 'calendar-blank-outline',
+  wifiOff: 'wifi-strength-off-outline',
+  checkCircle: 'check-circle',
+  close: 'close',
 } as const;
 
 export type AppIconName = keyof typeof ICONS;
