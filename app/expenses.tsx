@@ -1,12 +1,14 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import type { ExpenseRecord } from '@/domain/expenses/expense';
 import type { Project } from '@/domain/projects/project';
+import { useI18n } from '@/i18n/use-i18n';
 import { useApplication } from '@/providers/application-context';
+import { ActionButton } from '@/ui/components/action-button';
 import { ScreenShell } from '@/ui/components/screen-shell';
-import { colors, radii, spacing, typography } from '@/ui/theme/tokens';
+import { useTheme } from '@/ui/theme/use-theme';
 
 type ExpenseListItem = {
   record: ExpenseRecord;
@@ -15,8 +17,10 @@ type ExpenseListItem = {
 
 export default function ExpensesScreen() {
   const { expenseService, projectService } = useApplication();
+  const { t } = useI18n();
+  const { theme } = useTheme();
   const [items, setItems] = useState<ExpenseListItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -32,7 +36,7 @@ export default function ExpensesScreen() {
         if (mounted) setItems(next);
       })
       .catch(() => {
-        if (mounted) setError('Unable to load expenses from local storage.');
+        if (mounted) setError(true);
       });
     return () => {
       mounted = false;
@@ -40,30 +44,49 @@ export default function ExpensesScreen() {
   }, [expenseService, projectService]);
 
   return (
-    <ScreenShell
-      title="Expenses"
-      subtitle="Local project expenses and their receipt integrity state."
-    >
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Add expense"
-            style={styles.primaryButton}
+    <ScreenShell title={t('expenses.title')} subtitle={t('expenses.subtitle')}>
+      <ScrollView
+        contentContainerStyle={{ gap: theme.spacing.md, paddingBottom: theme.spacing.xxl }}
+      >
+        <View style={{ gap: theme.spacing.sm }}>
+          <ActionButton
+            label={t('common.addExpense')}
+            accessibilityLabel={t('common.addExpense')}
             onPress={() => router.push('/expense/edit' as never)}
-          >
-            <Text style={styles.primaryText}>Add expense</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={() => router.back()}>
-            <Text style={styles.secondaryText}>Back</Text>
-          </Pressable>
+          />
+          <ActionButton
+            label={t('common.back')}
+            variant="secondary"
+            onPress={() => router.back()}
+          />
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <Text
+            accessibilityRole="alert"
+            style={{ ...theme.typography.caption, color: theme.colors.error }}
+          >
+            {t('expenses.error')}
+          </Text>
+        ) : null}
+
         {items.length === 0 && !error ? (
-          <View style={styles.card}>
-            <Text style={styles.title}>No expenses yet</Text>
-            <Text style={styles.muted}>Add the first project expense when you need it.</Text>
+          <View
+            style={{
+              padding: theme.spacing.lg,
+              gap: theme.spacing.xs,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+              backgroundColor: theme.colors.surface,
+            }}
+          >
+            <Text style={{ ...theme.typography.bodyStrong, color: theme.colors.textPrimary }}>
+              {t('expenses.emptyTitle')}
+            </Text>
+            <Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>
+              {t('expenses.emptyBody')}
+            </Text>
           </View>
         ) : null}
 
@@ -74,37 +97,72 @@ export default function ExpensesScreen() {
             <Pressable
               key={expense.id}
               accessibilityRole="button"
-              accessibilityLabel={`Edit expense ${label}`}
-              style={styles.card}
+              accessibilityLabel={`${t('expenses.editLabel')} ${label}`}
               onPress={() =>
                 router.push({
                   pathname: '/expense/edit' as never,
                   params: { id: expense.id },
                 })
               }
+              style={({ pressed }) => ({
+                minHeight: theme.sizing.rowMinHeight,
+                padding: theme.spacing.lg,
+                gap: theme.spacing.xs,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radii.lg,
+                backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface,
+              })}
             >
-              <View style={styles.headerRow}>
-                <View style={styles.flex}>
-                  <Text style={styles.title}>{expense.category}</Text>
-                  <Text style={styles.muted}>{project?.name ?? 'Unknown project'}</Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  gap: theme.spacing.sm,
+                  alignItems: 'flex-start',
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ ...theme.typography.bodyStrong, color: theme.colors.textPrimary }}>
+                    {expense.category}
+                  </Text>
+                  <Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>
+                    {project?.name ?? t('expenses.unknownProject')}
+                  </Text>
                 </View>
-                <Text style={styles.amount}>
+                <Text style={{ ...theme.typography.bodyStrong, color: theme.colors.textPrimary }}>
                   {formatMinor(expense.projectAmountMinor)} {expense.projectCurrency}
                 </Text>
               </View>
-              {expense.description ? <Text style={styles.body}>{expense.description}</Text> : null}
-              <Text style={styles.muted}>
-                {formatMinor(expense.originalAmountMinor)} {expense.originalCurrency} · FX {expense.exchangeRateDecimal}
+
+              {expense.description ? (
+                <Text style={{ ...theme.typography.body, color: theme.colors.textPrimary }}>
+                  {expense.description}
+                </Text>
+              ) : null}
+
+              <Text style={{ ...theme.typography.caption, color: theme.colors.textMuted }}>
+                {formatMinor(expense.originalAmountMinor)} {expense.originalCurrency} · FX{' '}
+                {expense.exchangeRateDecimal}
               </Text>
-              <Text style={styles.muted}>{expense.expenseDate}</Text>
-              <Text style={styles.flags}>
-                {expense.billable ? 'Billable' : 'Non-billable'} · {expense.reimbursable ? 'Reimbursable' : 'Not reimbursable'}
+              <Text style={{ ...theme.typography.caption, color: theme.colors.textMuted }}>
+                {expense.expenseDate}
               </Text>
+              <Text style={{ ...theme.typography.caption, color: theme.colors.accent }}>
+                {expense.billable ? t('common.billable') : t('common.nonBillable')} ·{' '}
+                {expense.reimbursable
+                  ? t('expenses.reimbursable')
+                  : t('expenses.notReimbursable')}
+              </Text>
+
               {record.integrityWarnings.includes('MISSING_ATTACHMENT') ? (
-                <Text style={styles.warning}>A receipt file is missing. You can keep the expense and attach a replacement.</Text>
+                <Text style={{ ...theme.typography.caption, color: theme.colors.warning }}>
+                  {t('expenses.missingAttachment')}
+                </Text>
               ) : null}
               {record.integrityWarnings.includes('CHECKSUM_MISMATCH') ? (
-                <Text style={styles.warning}>A receipt file changed after it was attached. Re-attach it to restore integrity.</Text>
+                <Text style={{ ...theme.typography.caption, color: theme.colors.warning }}>
+                  {t('expenses.checksumMismatch')}
+                </Text>
               ) : null}
             </Pressable>
           );
@@ -117,22 +175,3 @@ export default function ExpensesScreen() {
 function formatMinor(value: number): string {
   return (value / 100).toFixed(2);
 }
-
-const styles = StyleSheet.create({
-  content: { gap: spacing.md, paddingBottom: spacing.xl },
-  actions: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  primaryButton: { backgroundColor: colors.accent, borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  primaryText: { color: colors.surface, fontWeight: '700' },
-  secondaryButton: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  secondaryText: { color: colors.textPrimary, fontWeight: '600' },
-  card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radii.lg, padding: spacing.lg, gap: spacing.xs },
-  headerRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
-  flex: { flex: 1 },
-  title: { color: colors.textPrimary, fontSize: typography.body, fontWeight: '700' },
-  amount: { color: colors.textPrimary, fontSize: typography.body, fontWeight: '700' },
-  body: { color: colors.textPrimary, fontSize: typography.body },
-  muted: { color: colors.textMuted, fontSize: typography.caption },
-  flags: { color: colors.accent, fontSize: typography.caption, fontWeight: '600' },
-  warning: { color: '#92400E', fontSize: typography.caption, fontWeight: '600' },
-  error: { color: '#B91C1C', fontSize: typography.caption, fontWeight: '600' },
-});
