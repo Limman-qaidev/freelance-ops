@@ -1,8 +1,14 @@
-import { useContext } from 'react';
+import { useCallback, useContext } from 'react';
+
 import { I18nContext } from './i18n-provider';
 import type { TranslationKey } from './translations';
 
 export function useUiCopy() {
   const context = useContext(I18nContext);
-  return (key: TranslationKey, fallback: string) => context?.t(key) ?? fallback;
+  const translate = context?.t;
+
+  return useCallback(
+    (key: TranslationKey, fallback: string) => translate?.(key) ?? fallback,
+    [translate],
+  );
 }
