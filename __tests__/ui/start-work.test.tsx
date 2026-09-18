@@ -112,7 +112,7 @@ const runningSession = {
 };
 
 function loadStartWorkScreen(): ComponentType {
-  const module = jest.requireActual('../../app/start-work') as {
+  const module = jest.requireActual('../../app/(tabs)/start-work') as {
     default: ComponentType;
   };
   return module.default;
@@ -175,7 +175,7 @@ describe('Start Work', () => {
     );
 
     expect(await view.findByText('Mailing tool')).toBeTruthy();
-    expect(view.getByText('Task (optional)')).toBeTruthy();
+    expect(view.getByText('Task (optional)')).toBeTruthy();\n    expect(view.getByText('Activity (optional)')).toBeTruthy();\n    expect(view.queryByText('Change project')).toBeNull();
     expect(view.getByText('Activity (optional)')).toBeTruthy();
 
     await fireEvent.press(view.getByLabelText('Start Work'));
