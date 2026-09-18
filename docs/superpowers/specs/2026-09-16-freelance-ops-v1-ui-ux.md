@@ -177,8 +177,8 @@ Excel is a data-oriented export. PDF is a professional client-facing work report
 
 The approved concept board is stored at:
 
-`docs/assets/concepts/freelance-ops-v1-ui-concept.jpg`
+`docs/assets/concepts/freelance-ops-v1-ui-concept.png`
 
-![Freelance Ops V1 UI Concept](../../assets/concepts/freelance-ops-v1-ui-concept.jpg)
+![Freelance Ops V1 UI Concept](../../assets/concepts/freelance-ops-v1-ui-concept.png)
 
-The image is the implementation reference for information hierarchy and flow, not a pixel-perfect specification. Functional rules in the written specs take precedence over visual artefacts if they conflict.
+For Phase 1 reconstruction, `docs/design/phase1-ui-contract.md` is the canonical visual/interaction contract and the PNG is the canonical visual reference. Functional/domain rules in the written specs remain authoritative for business semantics and data integrity; however, older written visual guidance must not be used to override the approved Phase 1 composition defined by the contract and PNG.
