@@ -8,6 +8,7 @@ import { AppHeader } from '../../src/ui/components/app-header';
 import { EmptyState } from '../../src/ui/components/empty-state';
 import { IconButton } from '../../src/ui/components/icon-button';
 import { ProjectRow } from '../../src/ui/components/project-row';
+import { ScreenShell } from '../../src/ui/components/screen-shell';
 import { SectionHeader } from '../../src/ui/components/section-header';
 import { darkTheme, lightTheme, resolveThemeMode } from '../../src/ui/theme/theme';
 import { ThemeProvider } from '../../src/ui/theme/theme-provider';
@@ -169,6 +170,19 @@ describe('visual primitives', () => {
     expect(button.props.accessibilityState).toEqual(expect.objectContaining({ disabled: true }));
     fireEvent.press(button);
     expect(onPress).not.toHaveBeenCalled();
+  });
+
+  it('uses the compact app header inside ScreenShell instead of document-style title spacing', async () => {
+    const screen = await renderInTheme(
+      <ScreenShell title="Proyectos" subtitle="Cliente y contexto del proyecto">
+        <Text>Contenido</Text>
+      </ScreenShell>,
+    );
+
+    expect(screen.getByTestId('screen-shell-header')).toBeTruthy();
+    expect(screen.getByText('Proyectos')).toHaveStyle(lightTheme.typography.title);
+    expect(screen.getByText('Cliente y contexto del proyecto')).toHaveStyle(lightTheme.typography.caption);
+    expect(screen.getByTestId('screen-shell-content')).toHaveStyle({ marginTop: lightTheme.spacing.md });
   });
 
   it('renders caller-provided translated text in structural primitives', async () => {
