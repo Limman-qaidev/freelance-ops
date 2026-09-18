@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import {
   formatLocalDateTime,
@@ -11,11 +11,13 @@ import type { Activity } from '@/domain/activities/activity';
 import type { Project } from '@/domain/projects/project';
 import type { Task } from '@/domain/tasks/task';
 import type { TimeHistoryRecord } from '@/domain/time-tracking/time-history';
+import { useI18n } from '@/i18n/use-i18n';
 import { useApplication } from '@/providers/application-context';
 import { ActionButton } from '@/ui/components/action-button';
+import { TextField } from '@/ui/components/form-fields';
 import { ScreenShell } from '@/ui/components/screen-shell';
 import { SelectionChip } from '@/ui/components/selection-chip';
-import { colors, radii, spacing, typography } from '@/ui/theme/tokens';
+import { useTheme } from '@/ui/theme/use-theme';
 
 type TimingMode = 'DURATION' | 'RANGE';
 
@@ -23,12 +25,9 @@ export default function TimeEntryEditorScreen() {
   const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
   const entryId = Array.isArray(rawId) ? rawId[0] : rawId;
   const isNew = !entryId || entryId === 'new';
-  const {
-    projectService,
-    taskService,
-    activityService,
-    manualTimeService,
-  } = useApplication();
+  const { projectService, taskService, activityService, manualTimeService } = useApplication();
+  const { t } = useI18n();
+  const { theme } = useTheme();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -54,7 +53,6 @@ export default function TimeEntryEditorScreen() {
 
   useEffect(() => {
     let mounted = true;
-
     void (async () => {
       try {
         const [activeProjects, activeActivities] = await Promise.all([
@@ -69,7 +67,6 @@ export default function TimeEntryEditorScreen() {
           const initialTasks = initialProject
             ? await taskService.listTasksForProject(initialProject.id)
             : [];
-
           if (!mounted) return;
           setProjects(activeProjects);
           setActivities(activeActivities);
@@ -84,26 +81,23 @@ export default function TimeEntryEditorScreen() {
         }
 
         const record = await manualTimeService.getById(entryId);
-        if (!record) throw new Error('Time entry was not found.');
+        if (!record) throw new Error(t('timeEntry.loadError'));
 
         const historicalProject = await projectService.getById(record.timeEntry.projectId);
         const availableProjects = historicalProject
           ? mergeById(activeProjects, historicalProject)
           : activeProjects;
-
         const activeTasks = await taskService.listTasksForProject(record.timeEntry.projectId);
         const historicalTask = record.timeEntry.taskId
           ? await taskService.getById(record.timeEntry.taskId)
           : null;
         const availableTasks = historicalTask ? mergeById(activeTasks, historicalTask) : activeTasks;
-
         const historicalActivity = record.timeEntry.activityId
           ? await activityService.getById(record.timeEntry.activityId)
           : null;
         const availableActivities = historicalActivity
           ? mergeById(activeActivities, historicalActivity)
           : activeActivities;
-
         const timing = timingPresentation(record);
 
         if (!mounted) return;
@@ -122,10 +116,8 @@ export default function TimeEntryEditorScreen() {
         setStartTime(timing.start.time);
         setEndDate(timing.end.date);
         setEndTime(timing.end.time);
-      } catch (loadError) {
-        if (mounted) {
-          setError(loadError instanceof Error ? loadError.message : 'Unable to load this time entry.');
-        }
+      } catch {
+        if (mounted) setError(t('timeEntry.loadError'));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -134,14 +126,7 @@ export default function TimeEntryEditorScreen() {
     return () => {
       mounted = false;
     };
-  }, [
-    activityService,
-    entryId,
-    isNew,
-    manualTimeService,
-    projectService,
-    taskService,
-  ]);
+  }, [activityService, entryId, isNew, manualTimeService, projectService, taskService, t]);
 
   async function selectProject(projectId: string) {
     setSelectedProjectId(projectId);
@@ -151,16 +136,15 @@ export default function TimeEntryEditorScreen() {
       setTasks(await taskService.listTasksForProject(projectId));
     } catch {
       setTasks([]);
-      setError('Unable to load tasks for the selected project.');
+      setError(t('timeEntry.taskLoadError'));
     }
   }
 
   async function save() {
     if (!selectedProjectId || busy) {
-      if (!selectedProjectId) setError('Choose a project before saving time.');
+      if (!selectedProjectId) setError(t('timeEntry.projectRequired'));
       return;
     }
-
     setBusy(true);
     setError(null);
     setSavedWarning(null);
@@ -180,7 +164,6 @@ export default function TimeEntryEditorScreen() {
                 startedAtUtc,
                 endedAtUtc: localDateTimeToUtc(endDate, endTime, timezoneId),
               };
-
         const result = await manualTimeService.create({
           projectId: selectedProjectId,
           taskId: selectedTaskId,
@@ -191,9 +174,7 @@ export default function TimeEntryEditorScreen() {
           timing,
         });
         if (result.warnings.includes('OVERLAP')) {
-          setSavedWarning(
-            'Saved. This entry overlaps existing recorded time; review both entries in history.',
-          );
+          setSavedWarning(t('timeEntry.overlapBody'));
           return;
         }
       } else {
@@ -213,16 +194,13 @@ export default function TimeEntryEditorScreen() {
           ...(timing ? { timing } : {}),
         });
         if (result.warnings.includes('OVERLAP')) {
-          setSavedWarning(
-            'Saved. This entry overlaps existing recorded time; review both entries in history.',
-          );
+          setSavedWarning(t('timeEntry.overlapBody'));
           return;
         }
       }
-
       router.replace('/time-history' as never);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Unable to save this time entry.');
+      setError(saveError instanceof Error ? saveError.message : t('timeEntry.saveError'));
     } finally {
       setBusy(false);
     }
@@ -235,10 +213,8 @@ export default function TimeEntryEditorScreen() {
     try {
       await manualTimeService.delete(entryId);
       router.replace('/time-history' as never);
-    } catch (deleteError) {
-      setError(
-        deleteError instanceof Error ? deleteError.message : 'Unable to delete this time entry.',
-      );
+    } catch {
+      setError(t('timeEntry.deleteError'));
       setConfirmDelete(false);
     } finally {
       setBusy(false);
@@ -247,175 +223,202 @@ export default function TimeEntryEditorScreen() {
 
   if (loading) {
     return (
-      <ScreenShell title={isNew ? 'Add manual time' : 'Edit time'} subtitle="Loading local data…" />
+      <ScreenShell
+        title={isNew ? t('timeEntry.addTitle') : t('timeEntry.editTitle')}
+        subtitle={t('timeEntry.loading')}
+      />
     );
   }
 
   return (
     <ScreenShell
-      title={isNew ? 'Add manual time' : 'Edit time'}
-      subtitle={
-        isNew
-          ? 'Project is required. Task, activity and description are optional.'
-          : 'Correct historical work without changing live timer state.'
-      }
+      title={isNew ? t('timeEntry.addTitle') : t('timeEntry.editTitle')}
+      subtitle={isNew ? t('timeEntry.addSubtitle') : t('timeEntry.editSubtitle')}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ScrollView
+        contentContainerStyle={{ gap: theme.spacing.md, paddingBottom: theme.spacing.xxl }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {error ? (
+          <Text accessibilityRole="alert" style={{ ...theme.typography.caption, color: theme.colors.error }}>
+            {error}
+          </Text>
+        ) : null}
+
         {savedWarning ? (
-          <View style={styles.warningCard}>
-            <Text style={styles.warningTitle}>Overlap warning</Text>
-            <Text style={styles.warningText}>{savedWarning}</Text>
+          <View
+            style={{
+              padding: theme.spacing.lg,
+              gap: theme.spacing.sm,
+              borderRadius: theme.radii.lg,
+              borderWidth: 1,
+              borderColor: theme.colors.warning,
+              backgroundColor: theme.colors.surfaceElevated,
+            }}
+          >
+            <Text style={{ ...theme.typography.bodyStrong, color: theme.colors.warning }}>
+              {t('timeEntry.overlapTitle')}
+            </Text>
+            <Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>
+              {savedWarning}
+            </Text>
             <ActionButton
-              label="Back to history"
+              label={t('timeEntry.backToHistory')}
               onPress={() => router.replace('/time-history' as never)}
             />
           </View>
         ) : null}
 
-        <Text style={styles.label}>Project</Text>
-        <View style={styles.chips}>
-          {projects.map((project) => (
-            <SelectionChip
-              key={project.id}
-              label={project.name}
-              selected={project.id === selectedProjectId}
-              accessibilityLabel={`Select project ${project.name}`}
-              onPress={() => void selectProject(project.id)}
-            />
-          ))}
-        </View>
-        {projects.length === 0 ? <Text style={styles.muted}>No project is available.</Text> : null}
+        <FieldGroup label={t('timeEntry.project')}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {projects.map((project) => (
+              <SelectionChip
+                key={project.id}
+                label={project.name}
+                selected={project.id === selectedProjectId}
+                accessibilityLabel={`${t('timeEntry.selectProject')} ${project.name}`}
+                onPress={() => void selectProject(project.id)}
+              />
+            ))}
+          </View>
+          {projects.length === 0 ? (
+            <Text style={{ ...theme.typography.caption, color: theme.colors.textMuted }}>
+              {t('timeEntry.noProject')}
+            </Text>
+          ) : null}
+        </FieldGroup>
 
-        <Text style={styles.label}>Task (optional)</Text>
-        <View style={styles.chips}>
-          {tasks.map((task) => (
-            <SelectionChip
-              key={task.id}
-              label={task.name}
-              selected={task.id === selectedTaskId}
-              accessibilityLabel={`Select task ${task.name}`}
-              onPress={() => setSelectedTaskId(task.id === selectedTaskId ? null : task.id)}
-            />
-          ))}
-        </View>
+        <FieldGroup label={t('timeEntry.taskOptional')}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {tasks.map((task) => (
+              <SelectionChip
+                key={task.id}
+                label={task.name}
+                selected={task.id === selectedTaskId}
+                accessibilityLabel={`${t('timeEntry.selectTask')} ${task.name}`}
+                onPress={() => setSelectedTaskId(task.id === selectedTaskId ? null : task.id)}
+              />
+            ))}
+          </View>
+        </FieldGroup>
 
-        <Text style={styles.label}>Activity (optional)</Text>
-        <View style={styles.chips}>
-          {activities.map((activity) => (
-            <SelectionChip
-              key={activity.id}
-              label={activity.name}
-              selected={activity.id === selectedActivityId}
-              accessibilityLabel={`Select activity ${activity.name}`}
-              onPress={() =>
-                setSelectedActivityId(activity.id === selectedActivityId ? null : activity.id)
-              }
-            />
-          ))}
-        </View>
+        <FieldGroup label={t('timeEntry.activityOptional')}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {activities.map((activity) => (
+              <SelectionChip
+                key={activity.id}
+                label={activity.name}
+                selected={activity.id === selectedActivityId}
+                accessibilityLabel={`${t('timeEntry.selectActivity')} ${activity.name}`}
+                onPress={() =>
+                  setSelectedActivityId(activity.id === selectedActivityId ? null : activity.id)
+                }
+              />
+            ))}
+          </View>
+        </FieldGroup>
 
-        <Text style={styles.label}>Billing</Text>
-        <View style={styles.chips}>
-          <SelectionChip
-            label="Billable"
-            selected={billable}
-            onPress={() => setBillable(true)}
-          />
-          <SelectionChip
-            label="Non-billable"
-            selected={!billable}
-            onPress={() => setBillable(false)}
-          />
-        </View>
+        <FieldGroup label={t('timeEntry.billing')}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            <SelectionChip
+              label={t('common.billable')}
+              selected={billable}
+              onPress={() => setBillable(true)}
+            />
+            <SelectionChip
+              label={t('common.nonBillable')}
+              selected={!billable}
+              onPress={() => setBillable(false)}
+            />
+          </View>
+        </FieldGroup>
 
         {timingLocked ? (
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Timing protected</Text>
-            <Text style={styles.muted}>
-              Timing is locked because this session contains pauses. You can edit project, task,
-              activity, billing and description without flattening the original intervals.
+          <View
+            style={{
+              padding: theme.spacing.md,
+              gap: theme.spacing.xs,
+              borderRadius: theme.radii.lg,
+              borderWidth: 1,
+              borderColor: theme.colors.borderStrong,
+              backgroundColor: theme.colors.surfaceElevated,
+            }}
+          >
+            <Text style={{ ...theme.typography.bodyStrong, color: theme.colors.accent }}>
+              {t('timeEntry.timingProtectedTitle')}
+            </Text>
+            <Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>
+              {t('timeEntry.timingProtectedBody')}
             </Text>
           </View>
         ) : (
           <>
             {isNew ? (
-              <>
-                <Text style={styles.label}>Time input</Text>
-                <View style={styles.chips}>
+              <FieldGroup label={t('timeEntry.inputMode')}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
                   <SelectionChip
-                    label="Duration"
+                    label={t('timeEntry.duration')}
                     selected={timingMode === 'DURATION'}
                     onPress={() => setTimingMode('DURATION')}
                   />
                   <SelectionChip
-                    label="End time"
+                    label={t('timeEntry.endTimeMode')}
                     selected={timingMode === 'RANGE'}
                     onPress={() => setTimingMode('RANGE')}
                   />
                 </View>
-              </>
+              </FieldGroup>
             ) : null}
 
-            <Text style={styles.label}>Work date</Text>
-            <TextInput
-              accessibilityLabel="Work date"
-              style={styles.input}
+            <TextField
+              label={t('timeEntry.workDate')}
+              accessibilityLabel={t('timeEntry.workDate')}
+              helperText="YYYY-MM-DD"
               value={startDate}
               onChangeText={setStartDate}
-              placeholder="YYYY-MM-DD"
               autoCapitalize="none"
             />
-
-            <Text style={styles.label}>Start time</Text>
-            <TextInput
-              accessibilityLabel="Start time"
-              style={styles.input}
+            <TextField
+              label={t('timeEntry.startTime')}
+              accessibilityLabel={t('timeEntry.startTime')}
+              helperText="HH:MM"
               value={startTime}
               onChangeText={setStartTime}
-              placeholder="HH:MM"
               autoCapitalize="none"
             />
 
             {isNew && timingMode === 'DURATION' ? (
-              <>
-                <Text style={styles.label}>Duration minutes</Text>
-                <TextInput
-                  accessibilityLabel="Duration minutes"
-                  style={styles.input}
-                  value={durationMinutes}
-                  onChangeText={setDurationMinutes}
-                  placeholder="60"
-                  keyboardType="number-pad"
-                />
-              </>
+              <TextField
+                label={t('timeEntry.durationMinutes')}
+                accessibilityLabel={t('timeEntry.durationMinutes')}
+                value={durationMinutes}
+                onChangeText={setDurationMinutes}
+                keyboardType="number-pad"
+              />
             ) : (
               <>
-                <Text style={styles.label}>End date</Text>
-                <TextInput
-                  accessibilityLabel="End date"
-                  style={styles.input}
+                <TextField
+                  label={t('timeEntry.endDate')}
+                  accessibilityLabel={t('timeEntry.endDate')}
+                  helperText="YYYY-MM-DD"
                   value={endDate}
                   onChangeText={setEndDate}
-                  placeholder="YYYY-MM-DD"
                   autoCapitalize="none"
                 />
-                <Text style={styles.label}>End time</Text>
-                <TextInput
-                  accessibilityLabel="End time"
-                  style={styles.input}
+                <TextField
+                  label={t('timeEntry.endTime')}
+                  accessibilityLabel={t('timeEntry.endTime')}
+                  helperText="HH:MM"
                   value={endTime}
                   onChangeText={setEndTime}
-                  placeholder="HH:MM"
                   autoCapitalize="none"
                 />
               </>
             )}
 
-            <Text style={styles.label}>Timezone</Text>
-            <TextInput
-              accessibilityLabel="Timezone"
-              style={styles.input}
+            <TextField
+              label={t('timeEntry.timezone')}
+              accessibilityLabel={t('timeEntry.timezone')}
               value={timezoneId}
               onChangeText={setTimezoneId}
               placeholder="Europe/Madrid"
@@ -425,46 +428,61 @@ export default function TimeEntryEditorScreen() {
           </>
         )}
 
-        <Text style={styles.label}>Description (optional)</Text>
-        <TextInput
-          accessibilityLabel="Description"
-          style={[styles.input, styles.descriptionInput]}
+        <TextField
+          label={t('timeEntry.descriptionOptional')}
+          accessibilityLabel="Descripción"
+          placeholder={t('timeEntry.descriptionPlaceholder')}
+          multiline
           value={description}
           onChangeText={setDescription}
-          placeholder="What work was done?"
-          multiline
         />
 
         {!savedWarning ? (
           <ActionButton
-            label={busy ? 'Saving…' : 'Save'}
-            accessibilityLabel="Save time entry"
+            label={busy ? t('timeEntry.saving') : t('timeEntry.save')}
+            accessibilityLabel={t('timeEntry.saveA11y')}
+            disabled={busy || !selectedProjectId}
             onPress={() => void save()}
           />
         ) : null}
-        <ActionButton label="Back" variant="secondary" onPress={() => router.back()} />
+        <ActionButton label={t('common.back')} variant="secondary" onPress={() => router.back()} />
 
         {!isNew ? (
           confirmDelete ? (
-            <View style={styles.dangerCard}>
-              <Text style={styles.dangerTitle}>Delete this time entry?</Text>
-              <Text style={styles.muted}>This removes the historical entry and its intervals.</Text>
+            <View
+              style={{
+                padding: theme.spacing.md,
+                gap: theme.spacing.sm,
+                borderRadius: theme.radii.lg,
+                borderWidth: 1,
+                borderColor: theme.colors.error,
+                backgroundColor: theme.colors.surfaceElevated,
+              }}
+            >
+              <Text style={{ ...theme.typography.bodyStrong, color: theme.colors.error }}>
+                {t('timeEntry.deleteTitle')}
+              </Text>
+              <Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>
+                {t('timeEntry.deleteBody')}
+              </Text>
               <ActionButton
-                label="Delete permanently"
-                accessibilityLabel="Confirm delete time entry"
+                label={t('timeEntry.deletePermanent')}
+                accessibilityLabel={t('timeEntry.confirmDeleteA11y')}
                 variant="danger"
+                disabled={busy}
                 onPress={() => void deleteEntry()}
               />
               <ActionButton
-                label="Cancel"
+                label={t('more.cancel')}
                 variant="secondary"
+                disabled={busy}
                 onPress={() => setConfirmDelete(false)}
               />
             </View>
           ) : (
             <ActionButton
-              label="Delete entry"
-              accessibilityLabel="Delete time entry"
+              label={t('timeEntry.deleteEntry')}
+              accessibilityLabel={t('timeEntry.deleteEntry')}
               variant="danger"
               onPress={() => setConfirmDelete(true)}
             />
@@ -472,6 +490,16 @@ export default function TimeEntryEditorScreen() {
         ) : null}
       </ScrollView>
     </ScreenShell>
+  );
+}
+
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  const { theme } = useTheme();
+  return (
+    <View style={{ gap: theme.spacing.sm }}>
+      <Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>{label}</Text>
+      {children}
+    </View>
   );
 }
 
@@ -504,89 +532,3 @@ function parseDuration(value: string): number {
   }
   return parsed;
 }
-
-const styles = StyleSheet.create({
-  content: {
-    gap: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-  label: {
-    color: colors.textPrimary,
-    fontSize: typography.caption,
-    fontWeight: '700',
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.md,
-    color: colors.textPrimary,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: typography.body,
-  },
-  descriptionInput: {
-    minHeight: 88,
-    textAlignVertical: 'top',
-  },
-  muted: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-    lineHeight: 20,
-  },
-  error: {
-    color: '#B91C1C',
-    fontSize: typography.caption,
-    fontWeight: '600',
-  },
-  warningCard: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  warningTitle: {
-    color: '#92400E',
-    fontSize: typography.body,
-    fontWeight: '700',
-  },
-  warningText: {
-    color: '#92400E',
-    fontSize: typography.caption,
-    lineHeight: 20,
-  },
-  infoCard: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  infoTitle: {
-    color: colors.accent,
-    fontSize: typography.body,
-    fontWeight: '700',
-  },
-  dangerCard: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  dangerTitle: {
-    color: '#991B1B',
-    fontSize: typography.body,
-    fontWeight: '700',
-  },
-});
