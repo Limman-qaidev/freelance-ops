@@ -187,10 +187,10 @@ describe('Start Work canonical composition', () => {
 
     await view.findByText('Mailing tool');
 
-    await fireEvent.press(view.getByLabelText('Task, optional'));
+    await fireEvent.press(view.getByLabelText('Task (optional)'));
     await fireEvent.press(view.getByLabelText('Select task SMTP integration'));
 
-    await fireEvent.press(view.getByLabelText('Activity, optional'));
+    await fireEvent.press(view.getByLabelText('Activity (optional)'));
     await fireEvent.press(view.getByLabelText('Select activity Development'));
 
     await fireEvent.changeText(
