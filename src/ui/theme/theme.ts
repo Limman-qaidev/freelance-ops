@@ -25,6 +25,7 @@ export type AppTheme = {
     accentSoft: string;
     onAccent: string;
     success: string;
+    successSoft: string;
     warning: string;
     error: string;
     info: string;
@@ -100,6 +101,7 @@ export const lightTheme: AppTheme = {
     accentSoft: '#EAF2FF',
     onAccent: '#FFFFFF',
     success: '#10A867',
+    successSoft: '#E7F8EF',
     warning: '#F59E0B',
     error: '#E5484D',
     info: '#4D7CFE',
@@ -130,6 +132,7 @@ export const darkTheme: AppTheme = {
     accentSoft: '#17345F',
     onAccent: '#07111F',
     success: '#4CD08A',
+    successSoft: '#183A2A',
     warning: '#F6B94B',
     error: '#FF7B7B',
     info: '#7AB8FF',
