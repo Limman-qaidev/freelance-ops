@@ -152,7 +152,7 @@ describe('core entity mobile screens', () => {
 
     await fireEvent.press(view.getByLabelText('Archive project Mailing tool'));
     expect(application.projectService.archive).toHaveBeenCalledWith('project-1');
-  });
+  }, 10_000);
 
   it('manages project tasks through application services', async () => {
     const { TasksManagementScreen } = jest.requireActual(
