@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import type { ComponentType } from 'react';
 
 import { ApplicationContextProvider } from '../../src/providers/application-context';
+import { ThemeProvider } from '../../src/ui/theme/theme-provider';
 
 jest.mock('expo-router', () => ({
   router: {
@@ -169,9 +170,9 @@ describe('Start Work', () => {
     const StartWorkScreen = loadStartWorkScreen();
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <StartWorkScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
     expect(await view.findByText('Mailing tool')).toBeTruthy();
@@ -196,22 +197,25 @@ describe('Start Work', () => {
     const StartWorkScreen = loadStartWorkScreen();
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <StartWorkScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
     await view.findByText('Mailing tool');
     expect(view.queryByText('Paused engagement')).toBeNull();
 
-    await fireEvent.press(view.getByLabelText('Select project Spare parts'));
+    await fireEvent.press(view.getByLabelText('Change project'));
+    await fireEvent.press(view.getByText('Spare parts')); 
+    await fireEvent.press(view.getByLabelText('Task'));
     expect(await view.findByText('Catalogue parser')).toBeTruthy();
     expect(view.queryByText('Finished task')).toBeNull();
 
-    await fireEvent.press(view.getByLabelText('Select task Catalogue parser'));
-    await fireEvent.press(view.getByLabelText('Select activity Development'));
+    await fireEvent.press(view.getByText('Catalogue parser'));
+    await fireEvent.press(view.getByLabelText('Activity'));
+    await fireEvent.press(view.getByText('Development'));
     await fireEvent.changeText(
-      view.getByPlaceholderText('What are you working on?'),
+      view.getByLabelText('Description'),
       'Build catalogue parser',
     );
     await fireEvent.press(view.getByLabelText('Start Work'));
@@ -230,9 +234,9 @@ describe('Start Work', () => {
     const StartWorkScreen = loadStartWorkScreen();
     const application = makeApplication(runningSession);
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <StartWorkScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
     await view.findByText('Mailing tool');

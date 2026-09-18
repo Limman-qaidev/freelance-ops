@@ -2,6 +2,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import { ApplicationContextProvider } from '../../src/providers/application-context';
+import { ThemeProvider } from '../../src/ui/theme/theme-provider';
 
 jest.mock('expo-router', () => ({
   router: {
@@ -103,16 +104,17 @@ describe('core entity mobile screens', () => {
     ) as { ProjectsManagementScreen: React.ComponentType };
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <ProjectsManagementScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
     expect((await view.findAllByText('Maubank')).length).toBeGreaterThan(0);
     expect(view.getByText('Mailing tool')).toBeTruthy();
 
-    await fireEvent.changeText(view.getByPlaceholderText('Client name'), 'Nissan');
     await fireEvent.press(view.getByText('Add client'));
+    await fireEvent.changeText(view.getByPlaceholderText('Client name'), 'Nissan');
+    await fireEvent.press(view.getAllByText('Add client')[1]);
     expect(application.clientService.create).toHaveBeenCalledWith({
       name: 'Nissan',
       legalName: null,
@@ -122,8 +124,9 @@ describe('core entity mobile screens', () => {
     await fireEvent.press(view.getByLabelText('Archive client Maubank'));
     expect(application.clientService.archive).toHaveBeenCalledWith('client-1');
 
-    await fireEvent.changeText(view.getByPlaceholderText('Project name'), 'Spare parts');
     await fireEvent.press(view.getByText('Add project'));
+    await fireEvent.changeText(view.getByPlaceholderText('Project name'), 'Spare parts');
+    await fireEvent.press(view.getByText('Save project'));
     expect(application.projectService.create).toHaveBeenCalledWith(
       expect.objectContaining({
         clientId: 'client-1',
@@ -132,7 +135,8 @@ describe('core entity mobile screens', () => {
       }),
     );
 
-    await fireEvent.press(view.getByLabelText('Add expense for Mailing tool'));
+    await fireEvent.press(view.getByLabelText('Open project Mailing tool'));
+    await fireEvent.press(view.getByLabelText('Add expense for Mailing tool')); 
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/expense/edit',
       params: { projectId: 'project-1' },
@@ -148,15 +152,16 @@ describe('core entity mobile screens', () => {
     ) as { TasksManagementScreen: React.ComponentType };
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <TasksManagementScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
     expect(await view.findByText('SMTP integration')).toBeTruthy();
+    await fireEvent.press(view.getByText('Add task'));
     await fireEvent.changeText(view.getByPlaceholderText('Task name'), 'Catalogue parser');
     await fireEvent.changeText(view.getByPlaceholderText('Estimated minutes'), '90');
-    await fireEvent.press(view.getByText('Add task'));
+    await fireEvent.press(view.getAllByText('Add task')[1]);
 
     expect(application.taskService.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -176,9 +181,9 @@ describe('core entity mobile screens', () => {
     ) as { ActivitiesManagement: React.ComponentType };
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <ActivitiesManagement />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
     expect(await view.findByText('Development')).toBeTruthy();

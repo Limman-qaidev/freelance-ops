@@ -1,68 +1,24 @@
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { ActivitiesManagement } from '@/features/activities/activities-management';
-import { ActionButton } from '@/ui/components/action-button';
+import { useI18n } from '@/i18n/use-i18n';
+import { AppIcon, type AppIconName } from '@/ui/components/app-icon';
 import { ScreenShell } from '@/ui/components/screen-shell';
-import { colors, radii, spacing, typography } from '@/ui/theme/tokens';
+import { SectionHeader } from '@/ui/components/section-header';
+import { useTheme } from '@/ui/theme/use-theme';
 
-export default function MoreScreen() {
-  return (
-    <ScreenShell
-      title="More"
-      subtitle="Review historical time and configure reusable work activities."
-    >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Time</Text>
-          <View style={styles.card}>
-            <Text style={styles.cardCopy}>
-              Repair missed sessions, review stopped timers and edit historical records.
-            </Text>
-            <ActionButton
-              label="Time history"
-              accessibilityLabel="Open time history"
-              onPress={() => router.push('/time-history' as never)}
-            />
-            <ActionButton
-              label="Add manual time"
-              accessibilityLabel="Add manual time from More"
-              variant="secondary"
-              onPress={() => router.push('/time-entry/new' as never)}
-            />
-          </View>
-        </View>
-
-        <ActivitiesManagement />
-      </ScrollView>
-    </ScreenShell>
-  );
+function SettingsRow({ label, detail, icon, onPress }: { label: string; detail: string; icon: AppIconName; onPress: () => void }) {
+  const { theme } = useTheme();
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ minHeight: 64, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, backgroundColor: pressed ? theme.colors.surfaceMuted : theme.colors.surface })}><AppIcon name={icon} color={theme.colors.accent} /><View style={{ flex: 1 }}><Text style={{ ...theme.typography.bodyStrong, color: theme.colors.textPrimary }}>{label}</Text><Text style={{ ...theme.typography.caption, color: theme.colors.textSecondary }}>{detail}</Text></View><AppIcon name="chevronRight" color={theme.colors.textMuted} /></Pressable>;
 }
 
-const styles = StyleSheet.create({
-  content: {
-    gap: spacing.xl,
-    paddingBottom: spacing.xl,
-  },
-  section: {
-    gap: spacing.sm,
-  },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: typography.sectionTitle,
-    fontWeight: '700',
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radii.lg,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  cardCopy: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-    lineHeight: 20,
-  },
-});
+export default function MoreScreen() {
+  const { theme, preference, resolved, setThemePreference } = useTheme();
+  const { language, languageOverride, setLanguage, t } = useI18n();
+  const nextLanguage = languageOverride === null ? 'es' : languageOverride === 'es' ? 'en' : null;
+  const nextTheme = preference === 'system' ? 'light' : preference === 'light' ? 'dark' : 'system';
+  const languageLabel = languageOverride === null ? `Automatic (${language})` : languageOverride === 'es' ? 'Español' : 'English';
+  const themeLabel = preference === 'system' ? `System (${resolved})` : preference[0].toUpperCase() + preference.slice(1);
+  return <ScreenShell title={t('nav.more')} subtitle={t('common.settings')}><ScrollView contentContainerStyle={{ gap: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}><View style={{ gap: theme.spacing.sm }}><SectionHeader title={t('more.workRecords')} /><SettingsRow label={t('more.timeHistory')} detail={t('more.timeHistoryDetail')} icon="manualTime" onPress={() => router.push('/time-history' as never)} /><SettingsRow label={t('common.addManualTime')} detail={t('more.manualDetail')} icon="manualTime" onPress={() => router.push('/time-entry/new' as never)} /><SettingsRow label={t('more.expenses')} detail={t('more.expensesDetail')} icon="expense" onPress={() => router.push('/expenses' as never)} /></View><View style={{ gap: theme.spacing.sm }}><SectionHeader title={t('more.preferences')} /><SettingsRow label={t('settings.language')} detail={languageLabel} icon="more" onPress={() => void setLanguage(nextLanguage)} /><SettingsRow label={t('more.appearance')} detail={themeLabel} icon="settings" onPress={() => void setThemePreference(nextTheme)} /></View><View style={{ gap: theme.spacing.sm }}><SectionHeader title={t('more.activities')} /><ActivitiesManagement /></View></ScrollView></ScreenShell>;
+}

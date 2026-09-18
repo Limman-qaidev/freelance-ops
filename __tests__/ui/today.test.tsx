@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 
 import TodayScreen from '../../app/(tabs)/index';
 import { ApplicationContextProvider } from '../../src/providers/application-context';
+import { ThemeProvider } from '../../src/ui/theme/theme-provider';
 
 jest.mock('expo-router', () => ({
   router: {
@@ -141,9 +142,9 @@ describe('Today', () => {
   it('lists trackable projects and exposes work and expense quick actions', async () => {
     const application = makeApplication();
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <TodayScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
     expect(await view.findByText('Mailing tool')).toBeTruthy();
@@ -158,22 +159,20 @@ describe('Today', () => {
       params: { projectId: activeProject.id },
     });
 
-    await fireEvent.press(view.getByLabelText('Open expenses from Today'));
-    expect(router.push).toHaveBeenCalledWith('/expenses');
 
-    await fireEvent.press(view.getByLabelText('Add expense from Today'));
+    await fireEvent.press(view.getByLabelText('Add expense'));
     expect(router.push).toHaveBeenCalledWith('/expense/edit');
   });
 
   it('recovers the persisted active session and exposes pause, resume and stop controls', async () => {
     const application = makeApplication(runningSession);
     const view = await render(
-      <ApplicationContextProvider application={application as never}>
+      <ThemeProvider systemColorScheme="light"><ApplicationContextProvider application={application as never}>
         <TodayScreen />
-      </ApplicationContextProvider>,
+      </ApplicationContextProvider></ThemeProvider>,
     );
 
-    expect(await view.findByText('Active session')).toBeTruthy();
+    expect(await view.findByText('Running')).toBeTruthy();
     expect(view.getByText('00:01:30')).toBeTruthy();
     expect(view.getByText('Pause')).toBeTruthy();
     expect(view.getByText('Stop')).toBeTruthy();
