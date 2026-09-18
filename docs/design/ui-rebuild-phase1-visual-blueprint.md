@@ -16,7 +16,7 @@ Authority order:
 1. written functional rules in `docs/superpowers/specs/2026-09-16-freelance-ops-v1-ui-ux.md`;
 2. reconstruction rules in `docs/superpowers/specs/2026-09-17-freelance-ops-ui-rebuild.md`;
 3. this implementation blueprint;
-4. the concept board `docs/assets/concepts/freelance-ops-v1-ui-concept.jpg` as hierarchy/flow reference, not as a pixel-perfect contract.
+4. the canonical concept board `docs/assets/concepts/freelance-ops-v1-ui-concept.png`, governed by `docs/design/phase1-ui-contract.md`, as the authoritative Phase 1 visual/composition reference.
 
 If a visual choice would conflict with a functional rule, the functional rule wins.
 
@@ -717,21 +717,25 @@ Phase-1 components are not complete unless they satisfy all of the following:
 - routine local actions should not generate noisy success banners;
 - use transient platform feedback only when confirmation is useful and does not interrupt the tracking flow.
 
-## 14. Deliberate deviations from the earlier concept board
+## 14. Relationship to the canonical concept board
 
-No functional deviation is introduced.
+No reconstruction-specific visual deviation may override the approved Phase 1 composition without explicit Product Owner approval.
 
-The following reconstruction-specific visual changes are deliberate and therefore override any conflicting pixel-level treatment in the earlier concept board:
+The authoritative visual order is:
 
-1. the previous blue-led identity is replaced by the approved graphite + petroleum/teal system;
-2. screen-title scale and vertical whitespace are tightened to the exact compact values in this blueprint;
-3. dark-theme tokens are now explicitly defined rather than inferred from the original visual reference;
-4. bilingual Spanish/English expansion is now an explicit layout requirement;
-5. bottom navigation requires stable vector icons and visible labels with exact sizing, eliminating any placeholder/default glyph behavior;
-6. ordinary content uses flatter surfaces and thinner borders with less card elevation than a consumer-style card-heavy interpretation;
-7. empty states are constrained to compact actionable section content rather than large decorative illustrations.
+1. `docs/design/phase1-ui-contract.md`;
+2. `docs/assets/concepts/freelance-ops-v1-ui-concept.png`;
+3. this blueprint as implementation guidance.
 
-The concept board remains authoritative for overall information hierarchy and the fast project-to-work flow wherever it does not conflict with these approved reconstruction decisions or written functional rules.
+The exact component geometry, accessibility, localization and theme rules in this blueprint remain useful engineering constraints only where they are compatible with the canonical contract and concept.
+
+In particular:
+
+- do not replace the approved blue-led light-mode identity with a different brand direction;
+- do not alter the persistent five-destination bottom shell shown by the approved concept;
+- do not replace the approved screen compositions with generic CRUD/document layouts;
+- dark mode must adapt the approved hierarchy rather than redefine it;
+- any deliberate visual deviation must be documented and explicitly approved by the Product Owner before implementation proceeds.
 
 ## 15. Engineering acceptance checklist
 

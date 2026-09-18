@@ -4,6 +4,7 @@
 
 Before implementing product behavior, read the relevant approved documents:
 
+- `docs/design/phase1-ui-contract.md` — canonical Phase 1 visual/interaction contract; read this first for UI work
 - `docs/superpowers/specs/README.md`
 - `docs/superpowers/specs/2026-09-16-freelance-ops-v1-design.md`
 - `docs/superpowers/specs/2026-09-16-freelance-ops-v1-domain-model.md`
@@ -11,11 +12,11 @@ Before implementing product behavior, read the relevant approved documents:
 - `docs/superpowers/specs/2026-09-16-freelance-ops-v1-quality-delivery.md`
 - `docs/superpowers/specs/2026-09-17-freelance-ops-ui-rebuild.md`
 - `docs/superpowers/plans/2026-09-16-slice0-slice1-implementation-plan.md`
-- Visual reference: `docs/assets/concepts/freelance-ops-v1-ui-concept.jpg`
+- Canonical visual reference: `docs/assets/concepts/freelance-ops-v1-ui-concept.png`
 
 If an issue conflicts with an approved spec, stop and surface the conflict rather than silently changing product semantics.
 
-For UI reconstruction work, the 2026-09-17 rebuild document is a delta over the existing approved V1 specs. Existing functional/domain rules remain authoritative unless a separate approved issue changes them.
+For UI reconstruction work, `docs/design/phase1-ui-contract.md` and the canonical PNG control visual composition, information hierarchy, navigation placement and approved Phase 1 surfaces. Existing functional/domain rules remain authoritative for business semantics and data integrity. If an older reconstruction document conflicts visually with the Phase 1 UI contract or PNG, the contract/PNG wins for visual presentation.
 
 ## Architecture
 
@@ -68,12 +69,14 @@ While UI-002 / #24 is open:
 - Spanish and English are both supported.
 - Initial language follows device locale; unsupported locales fall back to Spanish; manual override is persisted.
 - Theme supports System / Light / Dark, with System as default.
-- Visual identity uses graphite + petroleum/teal.
+- Visual identity and screen composition follow the canonical PNG. Do not substitute a different palette, hierarchy, navigation shell, or screen concept without explicit Product Owner approval.
 - The interface must be compact, professional and productivity-oriented.
 - Use real iconography; text glyph placeholders are not acceptable UI icons.
 - Empty states must expose the next useful action.
 - User-visible strings must use the localization layer once it exists.
 - Do not change domain semantics under the guise of a visual rebuild.
+- Implement visual reconstruction one approved slice at a time; broad end-to-end redesigns without intermediate Product Owner gates are not allowed.
+- If an implementation cannot clearly match the canonical PNG and Phase 1 UI contract, stop and surface the conflict instead of improvising.
 
 ## Visual approval gate
 

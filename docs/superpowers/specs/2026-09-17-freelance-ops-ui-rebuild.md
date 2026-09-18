@@ -13,9 +13,9 @@ This is a presentation-layer reconstruction. Existing domain rules, persistence 
 The existing functional UI specification remains the baseline:
 
 - `docs/superpowers/specs/2026-09-16-freelance-ops-v1-ui-ux.md`
-- visual reference: `docs/assets/concepts/freelance-ops-v1-ui-concept.jpg`
+- visual reference: `docs/assets/concepts/freelance-ops-v1-ui-concept.png`
 
-If this document conflicts with a functional rule in the earlier approved specification, the functional rule wins. This document controls the reconstruction-specific visual system, localization, theming, delivery model and visual acceptance gates.
+If this document conflicts with a functional rule in the earlier approved specification, the functional rule wins for business semantics. For visual composition and interaction presentation, `docs/design/phase1-ui-contract.md` and the canonical PNG are authoritative and supersede conflicting visual guidance in this reconstruction document.
 
 ## 2. Product-quality target
 
@@ -42,15 +42,18 @@ The design language is hybrid:
 
 ## 3. Visual identity
 
-The previous blue-led visual identity is replaced.
+The approved Phase 1 visual identity is defined by `docs/design/phase1-ui-contract.md` and the canonical PNG.
 
-New direction:
+Required direction:
 
-- neutral graphite foundation;
-- petroleum/teal as the primary accent family;
-- semantic success, warning and error colors remain independent of the brand accent;
+- light neutral productivity surfaces matching the concept;
+- blue primary/action emphasis;
+- green active/success status treatment;
+- limited semantic accent colors for supporting states;
 - restrained surfaces, borders and elevation;
-- typography and spacing prioritize density and scanability.
+- typography and spacing that preserve the concept's compact density and scanability.
+
+Dark mode is an adaptation of this approved system, not a separate redesign.
 
 The design system must expose semantic tokens rather than screen-specific color constants.
 
