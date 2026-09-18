@@ -6,12 +6,15 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
+    "android:release": "expo run:android --variant release",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "jest --watch",
-    "test:ci": "jest --ci --runInBand"
+    "test:ci": "jest --ci --runInBand",
+    "verify:release": "npm run typecheck && npm run lint && npm run test:ci",
+    "e2e:android": "maestro test e2e/maestro/critical-timer-flow.yaml"
   },
   "dependencies": {
     "@expo/ui": "~57.0.9",
